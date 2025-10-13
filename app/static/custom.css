@@ -1,19 +1,98 @@
 /*
- * Rclone S3 Sync WebApp - Stylesheet Personalizzato
+ * Rclone S3 Sync WebApp - Stylesheet Personalizzato con Tema Dark/Light
  *
  * Questo file contiene tutti gli stili CSS per l'interfaccia web
  * dell'applicazione di sincronizzazione S3. Il design è ottimizzato
  * per essere moderno, responsivo e user-friendly.
  *
- * Layout: Design compatto con sezioni ben organizzate
+ * Features:
+ * - Supporto tema Dark/Light con toggle
+ * - Layout compatto con sezioni ben organizzate
  * - Header con gradiente e branding
  * - Cards per ogni sezione funzionale
  * - Layout a griglia responsivo
  * - Console output con tema terminale
+ * - Transizioni smooth per cambio tema
  *
- * Compatibilità: CSS3 moderno con fallback per browser meno recenti
+ * Compatibilità: CSS3 moderno con custom properties
  * Responsive: Breakpoint mobile a 768px
  */
+
+/* =============================================================================
+   VARIABILI CSS PER TEMA LIGHT/DARK
+   ============================================================================= */
+
+:root {
+    /* Tema Light (default) */
+    --bg-gradient-start: #667eea;
+    --bg-gradient-end: #764ba2;
+    --header-text-color: #ffffff;
+    --header-text-shadow: rgba(0,0,0,0.3);
+    
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --card-text: #333333;
+    --card-shadow: rgba(0,0,0,0.1);
+    --card-border: rgba(255, 255, 255, 0.2);
+    
+    --input-bg: #ffffff;
+    --input-border: #ddd;
+    --input-text: #333;
+    --input-focus: #667eea;
+    
+    --btn-primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --btn-primary-text: #ffffff;
+    --btn-secondary-bg: #6c757d;
+    --btn-secondary-text: #ffffff;
+    --btn-danger-bg: #dc3545;
+    
+    --console-bg: #1a1a1a;
+    --console-text: #00ff00;
+    --console-border: #333;
+    
+    --tooltip-bg: rgba(255, 255, 255, 0.98);
+    --tooltip-text: #333;
+    --tooltip-border: rgba(255, 255, 255, 0.2);
+    
+    --status-active-bg: #28a745;
+    --notification-success-bg: #d4edda;
+    --notification-error-bg: #f8d7da;
+}
+
+/* Tema Dark */
+[data-theme="dark"] {
+    --bg-gradient-start: #1a1a2e;
+    --bg-gradient-end: #16213e;
+    --header-text-color: #ffffff;
+    --header-text-shadow: rgba(0,0,0,0.5);
+    
+    --card-bg: rgba(30, 30, 50, 0.95);
+    --card-text: #e0e0e0;
+    --card-shadow: rgba(0,0,0,0.3);
+    --card-border: rgba(255, 255, 255, 0.1);
+    
+    --input-bg: #2d2d4a;
+    --input-border: #404060;
+    --input-text: #e0e0e0;
+    --input-focus: #4a90e2;
+    
+    --btn-primary-bg: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+    --btn-primary-text: #ffffff;
+    --btn-secondary-bg: #495057;
+    --btn-secondary-text: #ffffff;
+    --btn-danger-bg: #dc3545;
+    
+    --console-bg: #0d1117;
+    --console-text: #00ff41;
+    --console-border: #21262d;
+    
+    --tooltip-bg: rgba(45, 45, 70, 0.98);
+    --tooltip-text: #e0e0e0;
+    --tooltip-border: rgba(255, 255, 255, 0.1);
+    
+    --status-active-bg: #198754;
+    --notification-success-bg: #0f2419;
+    --notification-error-bg: #2c0b0e;
+}
 
 /* =============================================================================
    RESET E CONFIGURAZIONE BASE
@@ -26,12 +105,13 @@
 }
 
 body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
     min-height: 100vh;
     padding: 10px 0;
     margin: 0;
     line-height: 1.6;
+    transition: background 0.3s ease;
 }
 
 /* =============================================================================
@@ -47,7 +127,7 @@ body {
 /* Header con branding e descrizione */
 .header {
     text-align: center;
-    color: white;
+    color: var(--header-text-color);
     margin-bottom: 20px;
     position: relative;
 }
@@ -68,22 +148,55 @@ body {
     font-size: 2.5rem;
     margin-bottom: 10px;
     font-weight: 300;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    text-shadow: 0 2px 4px var(--header-text-shadow);
 }
 
 .header p {
     font-size: 1.2rem;
     opacity: 0.9;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    text-shadow: 0 1px 2px var(--header-text-shadow);
 }
 
-/* Pulsante di aiuto */
+/* Pulsanti header */
 .header-actions {
     position: absolute;
     top: 0;
     right: 0;
+    display: flex;
+    gap: 15px;
 }
 
+/* Toggle tema dark/light */
+.theme-toggle {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    padding: 12px 16px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.theme-toggle-icon {
+    font-size: 1.1rem;
+}
+
+/* Pulsante di aiuto */
 .help-button {
     background: rgba(255, 255, 255, 0.2);
     border: 2px solid rgba(255, 255, 255, 0.3);
@@ -117,15 +230,16 @@ body {
     top: 100%;
     right: 0;
     width: 400px;
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--tooltip-bg);
     border-radius: 15px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    box-shadow: 0 20px 40px var(--card-shadow);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid var(--tooltip-border);
     z-index: 1000;
     display: none;
     animation: tooltipFadeIn 0.3s ease;
     margin-top: 15px;
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .help-tooltip.show {
@@ -153,7 +267,7 @@ body {
 
 .tooltip-header h4 {
     margin: 0;
-    color: #333;
+    color: var(--tooltip-text);
     font-size: 1.1rem;
     display: flex;
     align-items: center;
@@ -164,7 +278,8 @@ body {
     background: none;
     border: none;
     font-size: 1.2rem;
-    color: #666;
+    color: var(--tooltip-text);
+    opacity: 0.7;
     cursor: pointer;
     width: 30px;
     height: 30px;
@@ -177,7 +292,7 @@ body {
 
 .tooltip-close:hover {
     background: rgba(0,0,0,0.1);
-    color: #333;
+    opacity: 1;
 }
 
 .tooltip-content {
@@ -196,14 +311,15 @@ body {
 }
 
 .help-step strong {
-    color: #333;
+    color: var(--tooltip-text);
     display: block;
     margin-bottom: 5px;
     font-size: 0.9rem;
 }
 
 .help-step p {
-    color: #666;
+    color: var(--tooltip-text);
+    opacity: 0.8;
     font-size: 0.85rem;
     line-height: 1.4;
     margin: 0;
@@ -240,7 +356,7 @@ body {
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-/* Responsive tooltip */
+/* Responsive header e tooltip */
 @media (max-width: 768px) {
     .header-content {
         flex-direction: column;
@@ -249,6 +365,20 @@ body {
 
     .header-actions {
         position: static;
+        flex-direction: row;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .theme-toggle {
+        min-width: 100px;
+        padding: 10px 14px;
+        font-size: 0.85rem;
+    }
+
+    .help-button {
+        padding: 10px 16px;
+        font-size: 0.85rem;
     }
 
     .help-tooltip {
@@ -268,18 +398,20 @@ body {
    ============================================================================= */
 
 .card {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--card-bg);
     border-radius: 20px;
     padding: 20px;
     margin-bottom: 20px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    box-shadow: 0 20px 40px var(--card-shadow);
     width: 100%;
     box-sizing: border-box;
-    backdrop-filter: blur(10px); /* Effetto vetro smerigliato */
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--card-border);
+    transition: all 0.3s ease;
 }
 
 .card h3 {
-    color: #333;
+    color: var(--card-text);
     margin-bottom: 20px;
     font-size: 1.4rem;
     display: flex;
@@ -320,23 +452,31 @@ body {
 
 .form-group label {
     font-weight: 600;
-    color: #333;
+    color: var(--card-text);
     margin-bottom: 6px;
     font-size: 0.9rem;
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
     padding: 10px 14px;
-    border: 2px solid #e1e5e9;
+    border: 2px solid var(--input-border);
     border-radius: 8px;
     font-size: 0.95rem;
-    background: white;
-    transition: border-color 0.3s ease;
+    background: var(--input-bg);
+    color: var(--input-text);
+    transition: all 0.3s ease;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.form-group textarea {
+    white-space: pre-wrap;
+    resize: vertical;
+    min-height: 80px;
 }
 
 /* Specifica per select bucket - limita larghezza e gestisce testo lungo */
@@ -354,10 +494,11 @@ body {
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
 }
 
 /* =============================================================================
@@ -371,8 +512,8 @@ body {
     font-weight: 600;
     font-size: 0.95rem;
     cursor: pointer;
-    color: white;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--btn-primary-text);
+    background: var(--btn-primary-bg);
     height: fit-content;
     transition: all 0.3s ease;
 }
@@ -388,7 +529,8 @@ body {
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-text);
 }
 
 .btn-full {
@@ -414,36 +556,37 @@ body {
     align-items: center;
     gap: 12px;
     padding: 12px 16px;
-    background: #f8f9fa;
+    background: var(--input-bg);
     border-radius: 8px;
-    border: 2px solid #e9ecef;
+    border: 2px solid var(--input-border);
     transition: all 0.3s ease;
     cursor: pointer;
 }
 
 .checkbox-group:hover {
-    border-color: #667eea;
-    background: #f0f2ff;
+    border-color: var(--input-focus);
+    background: var(--input-bg);
     transform: translateY(-1px);
+    opacity: 0.9;
 }
 
 /* Stile per checkbox selezionate (supporto browser moderni) */
 .checkbox-group:has(input:checked) {
-    border-color: #667eea;
-    background: #e8ecff;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+    border-color: var(--input-focus);
+    background: var(--input-bg);
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.15);
 }
 
 .checkbox-group input[type="checkbox"] {
     width: 16px;
     height: 16px;
-    accent-color: #667eea;  /* Colore personalizzato checkbox */
+    accent-color: var(--input-focus);
     cursor: pointer;
 }
 
 .checkbox-group label {
     font-weight: 500;
-    color: #495057;
+    color: var(--card-text);
     cursor: pointer;
     margin: 0;
     font-size: 0.9rem;
@@ -452,7 +595,8 @@ body {
 
 .flag-description {
     font-size: 0.8rem;
-    color: #6c757d;
+    color: var(--card-text);
+    opacity: 0.7;
     margin-top: 4px;
     font-style: italic;
 }
@@ -460,7 +604,8 @@ body {
 /* Testo di aiuto per i campi */
 .field-help {
     font-size: 0.75rem;
-    color: #6c757d;
+    color: var(--card-text);
+    opacity: 0.7;
     margin-top: 4px;
     font-style: italic;
     line-height: 1.3;
@@ -576,7 +721,7 @@ body {
 }
 
 .collapsible-header:hover {
-    color: #667eea;
+    color: var(--input-focus);
 }
 
 .toggle-icon {
@@ -608,33 +753,35 @@ body {
    ============================================================================= */
 
 .output-container {
-    background: #1a1a1a;
+    background: var(--console-bg);
     border-radius: 15px;
     overflow: hidden;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+    border: 1px solid var(--console-border);
+    transition: all 0.3s ease;
 }
 
 .output-header {
-    background: #333;
+    background: var(--console-border);
     padding: 15px 20px;
-    color: white;
+    color: var(--console-text);
     font-weight: 600;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #555;
+    border-bottom: 1px solid var(--console-border);
 }
 
 .output-content {
     height: 400px;
     overflow-y: auto;
-    padding: 0 20px;  /* Solo padding laterale - testo inizia dall'alto */
-    font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+    padding: 0 20px;
+    font-family: 'Fira Code', 'Courier New', 'Monaco', 'Menlo', monospace;
     font-size: 0.9rem;
     line-height: 1.5;
-    color: #00ff00;  /* Verde stile terminale */
-    background: #000;
-    white-space: pre-wrap;  /* Preserva spazi e a capo */
+    color: var(--console-text);
+    background: var(--console-bg);
+    white-space: pre-wrap;
     word-wrap: break-word;
 }
 
@@ -644,16 +791,16 @@ body {
 }
 
 .output-content::-webkit-scrollbar-track {
-    background: #333;
+    background: var(--console-border);
 }
 
 .output-content::-webkit-scrollbar-thumb {
-    background: #666;
+    background: var(--input-border);
     border-radius: 4px;
 }
 
 .output-content::-webkit-scrollbar-thumb:hover {
-    background: #888;
+    background: var(--input-focus);
 }
 
 /* =============================================================================
@@ -661,12 +808,13 @@ body {
    ============================================================================= */
 
 .status-bar {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    background: var(--status-active-bg);
     color: white;
     padding: 10px 20px;
     border-radius: 10px;
     margin-top: 15px;
-    display: none;  /* Nascosto per default */
+    display: none;
+    transition: all 0.3s ease;
     font-weight: 600;
     text-align: center;
     animation: pulse 2s infinite;
@@ -700,14 +848,15 @@ body {
     box-shadow: 0 4px 15px rgba(0,0,0,0.3);
     max-width: 300px;
     word-wrap: break-word;
+    transition: all 0.3s ease;
 }
 
 .notification.success {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    background: var(--status-active-bg);
 }
 
 .notification.error {
-    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+    background: var(--btn-danger-bg);
 }
 
 .notification.show {
@@ -820,8 +969,9 @@ body {
 /* Focus visibile per navigazione da tastiera */
 button:focus,
 input:focus,
-select:focus {
-    outline: 2px solid #667eea;
+select:focus,
+textarea:focus {
+    outline: 2px solid var(--input-focus);
     outline-offset: 2px;
 }
 
@@ -837,12 +987,155 @@ select:focus {
 /* Alto contrasto per migliore leggibilità */
 @media (prefers-contrast: high) {
     .card {
-        border: 2px solid #333;
+        border: 2px solid var(--card-text);
     }
 
     .form-group input,
-    .form-group select {
+    .form-group select,
+    .form-group textarea {
         border-width: 2px;
+    }
+}
+
+/* =============================================================================
+   STILI SPECIFICI PER VALIDAZIONE E INTERAZIONI
+   ============================================================================= */
+
+/* Validazione JSON */
+.json-valid {
+    border-color: var(--status-active-bg) !important;
+    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.json-invalid {
+    border-color: var(--btn-danger-bg) !important;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+/* File caricato con successo */
+.file-loaded {
+    border-color: var(--status-active-bg) !important;
+    background: var(--input-bg);
+}
+
+/* Radio buttons styling */
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: 20px;
+    cursor: pointer;
+    color: var(--card-text);
+    font-size: 0.9rem;
+}
+
+.radio-option input[type="radio"] {
+    accent-color: var(--input-focus);
+}
+
+/* Auth method selector */
+.auth-method-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 8px;
+}
+
+/* Service Account fields */
+.sa-fields {
+    margin-top: 15px;
+    padding: 15px;
+    background: var(--input-bg);
+    border-radius: 8px;
+    border: 1px solid var(--input-border);
+    transition: all 0.3s ease;
+}
+
+/* =============================================================================
+   SMOOTH TRANSITIONS PER CAMBIO TEMA
+   ============================================================================= */
+
+/* Transizioni globali per un cambio tema fluido */
+*,
+*::before,
+*::after {
+    transition: 
+        background-color 0.3s ease,
+        background 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease,
+        box-shadow 0.3s ease,
+        opacity 0.3s ease;
+}
+
+/* Esclusioni dalle transizioni per elementi che ne hanno già o non ne hanno bisogno */
+.btn,
+.theme-toggle,
+.help-button,
+input,
+select,
+textarea {
+    transition: 
+        background-color 0.3s ease,
+        background 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease,
+        box-shadow 0.3s ease,
+        opacity 0.3s ease,
+        transform 0.2s ease;
+}
+
+/* Mantieni le animazioni esistenti per tooltip */
+.help-tooltip,
+.notification {
+    transition: 
+        background-color 0.3s ease,
+        background 0.3s ease,
+        color 0.3s ease,
+        border-color 0.3s ease,
+        box-shadow 0.3s ease,
+        opacity 0.3s ease;
+}
+
+/* =============================================================================
+   PREFERENZE SISTEMA - Rispetto preferenze tema del sistema operativo
+   ============================================================================= */
+
+/* Rispetta la preferenza del sistema per tema scuro se non è stata impostata manualmente */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        --bg-gradient-start: #1a1a2e;
+        --bg-gradient-end: #16213e;
+        --header-text-color: #ffffff;
+        --header-text-shadow: rgba(0,0,0,0.5);
+        
+        --card-bg: rgba(30, 30, 50, 0.95);
+        --card-text: #e0e0e0;
+        --card-shadow: rgba(0,0,0,0.3);
+        --card-border: rgba(255, 255, 255, 0.1);
+        
+        --input-bg: #2d2d4a;
+        --input-border: #404060;
+        --input-text: #e0e0e0;
+        --input-focus: #4a90e2;
+        
+        --btn-primary-bg: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+        --btn-primary-text: #ffffff;
+        --btn-secondary-bg: #495057;
+        --btn-secondary-text: #ffffff;
+        --btn-danger-bg: #dc3545;
+        
+        --console-bg: #0d1117;
+        --console-text: #00ff41;
+        --console-border: #21262d;
+        
+        --tooltip-bg: rgba(45, 45, 70, 0.98);
+        --tooltip-text: #e0e0e0;
+        --tooltip-border: rgba(255, 255, 255, 0.1);
+        
+        --status-active-bg: #198754;
+        --notification-success-bg: #0f2419;
+        --notification-error-bg: #2c0b0e;
     }
 }
 
@@ -851,12 +1144,13 @@ select:focus {
    ============================================================================= */
 
 .app-footer {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--card-bg);
     backdrop-filter: blur(10px);
     border-radius: 20px 20px 0 0;
     margin-top: 40px;
-    box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
-    border-top: 3px solid #667eea;
+    box-shadow: 0 -10px 30px var(--card-shadow);
+    border-top: 3px solid var(--input-focus);
+    transition: all 0.3s ease;
 }
 
 .footer-content {
