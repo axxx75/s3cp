@@ -138,9 +138,22 @@ def build_remote(provider, bucket, path=''):
     # Formato base: provider:bucket
     remote = "{}:{}".format(provider, bucket)
 
-    # Aggiungi path se specificato, rimuovendo slash iniziali/finali
-    if path:
-        remote += '/' + path.strip('/')
+    # Aggiungi path se specificato, con validazione e pulizia
+    if path and path.strip():
+        # Pulisce il path: rimuove solo slash iniziali/finali e normalizza
+        clean_path = path.strip().strip('/')
+        
+        # Normalizza separatori multipli
+        import re
+        clean_path = re.sub(r'/+', '/', clean_path)
+        
+        # Rimuove solo caratteri veramente problematici per rclone
+        # Mantiene: lettere, numeri, spazi, trattini, underscore, punti e slash
+        # Rimuove solo: @#$%^&*(){}[]|\"'<>?`~+=
+        clean_path = re.sub(r'[@#$%^&*(){}[\]|"\'<>?`~+=]', '', clean_path)
+        
+        if clean_path:
+            remote += '/' + clean_path
 
     return remote
 
@@ -159,10 +172,12 @@ def run_rclone(cmd, env):
             - log_file_path (str): Path del file di log dove viene salvato l'output
 
     Note:
-        Questa funzione avvia il processo rclone in background e scrive tutto l'output
-        (stdout + stderr) in un file di log per permettere lo streaming real-time
-        all'interfaccia web.
+        Questa funzione avvia il processo rclone in background e ritorna immediatamente.
+        Il processo continua in background e l'output viene scritto nel file di log
+        per permettere lo streaming real-time all'interfaccia web.
     """
+    import threading
+    
     # Genera ID univoco per il job
     job_id = uuid.uuid4().hex
     log_file = os.path.join(LOG_DIR, "job_{}.log".format(job_id))
@@ -170,26 +185,48 @@ def run_rclone(cmd, env):
     # Scrive l'inizio del job nel log con comando eseguito
     with open(log_file, "a") as f:
         f.write("[JOB {}] START: {}\n".format(job_id, ' '.join(cmd)))
+        f.flush()
 
-    # Avvia processo rclone
-    # stdout e stderr vengono uniti per catturare tutto l'output
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,  # Gestione automatica encoding
-        env=env
-    )
+    def run_process_in_background():
+        """Funzione per eseguire rclone in background"""
+        try:
+            # Avvia processo rclone
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                env=env,
+                bufsize=1  # Line buffering per output real-time
+            )
 
-    # Scrive output in tempo reale nel file di log
-    with open(log_file, "a") as f:
-        for line in proc.stdout:
-            f.write(line)
-            f.flush()  # Forza scrittura immediata per streaming
+            # Scrive output in tempo reale nel file di log
+            with open(log_file, "a") as f:
+                f.write("[JOB {}] PROCESS STARTED (PID: {})\n".format(job_id, proc.pid))
+                f.flush()
+                
+                for line in proc.stdout:
+                    f.write(line)
+                    f.flush()  # Forza scrittura immediata per streaming
 
-    # Aspetta completamento processo
-    proc.wait()
+                # Aspetta completamento processo
+                proc.wait()
+                
+                # Scrive risultato finale
+                f.write("[JOB {}] PROCESS COMPLETED (Exit Code: {})\n".format(job_id, proc.returncode))
+                f.flush()
 
+        except Exception as e:
+            # Gestisce errori durante l'esecuzione
+            with open(log_file, "a") as f:
+                f.write("[JOB {}] ERROR: {}\n".format(job_id, str(e)))
+                f.flush()
+
+    # Avvia thread in background
+    thread = threading.Thread(target=run_process_in_background, daemon=True)
+    thread.start()
+
+    # Ritorna immediatamente job_id e log_file
     return job_id, log_file
 
 # =============================================================================
@@ -509,6 +546,8 @@ def copy():
         src = build_remote(src_provider, src_bucket, src_path)
         dst = build_remote(dst_provider, dst_bucket, dst_path)
 
+        app.logger.info("Remote costruiti - SRC: '{}', DST: '{}'".format(src, dst))
+
         # Preparazione environment con credenziali combinate
         env = os.environ.copy()
         env.update(safe_env(src_creds))   # Credenziali sorgente
@@ -526,10 +565,13 @@ def copy():
         cmd = ["rclone", "sync", src, dst] + flags
 
         app.logger.info("Avvio sincronizzazione: {} -> {}".format(src, dst))
-        app.logger.info("Flag utilizzati: {}".format(flags))
+        app.logger.info("Comando completo: {}".format(' '.join(cmd)))
+        # app.logger.info("Flag utilizzati: {}".format(flags))  # Commentato per sicurezza
 
         # Avvio job asincrono
+        app.logger.info("Avvio processo rclone in background...")
         job_id, log_file = run_rclone(cmd, env)
+        app.logger.info("Job creato con ID: {} - Log: {}".format(job_id, log_file))
 
         return jsonify({"job_id": job_id})
 
