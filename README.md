@@ -79,9 +79,11 @@ python-dotenv>=0.19.0
 
 ### **1️⃣ Clona e Installa**
 ```bash
-git clone <repository-url>
-cd cloud-storage-sync
-pip install flask python-dotenv
+git clone https://github.com/axxx75/s3cp.git
+cd s3cp
+python3 -m venv venv
+source venv/bin/activate
+pip install flask python-dotenv gunicorn
 ```
 
 ### **2️⃣ Configura rclone**
@@ -95,17 +97,13 @@ rclone version
 
 ### **3️⃣ Avvia l'applicazione**
 ```bash
-# Sviluppo
-python app.py
+jfhsajkfhskljdhghkjgvhdlfgkjlkjgshkjh
 
-# Produzione (consigliato)
-pip install uvicorn
-uvicorn app:app --host 0.0.0.0 --port 8081
 ```
 
 ### **4️⃣ Accedi all'interfaccia**
 ```
-🌐 http://localhost:8081
+🌐 http://localhost:8080
 ```
 
 ---
