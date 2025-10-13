@@ -80,7 +80,8 @@ python-dotenv>=0.19.0
 ### **1️⃣ Clona e Installa**
 ```bash
 git clone https://github.com/axxx75/s3cp.git
-cd s3cp
+cd s3cpp
+pip install -U pip
 python3 -m venv venv
 source venv/bin/activate
 pip install flask python-dotenv gunicorn
@@ -95,10 +96,15 @@ curl https://rclone.org/install.sh | bash
 rclone version
 ```
 
-### **3️⃣ Avvia l'applicazione**
+### **3️⃣ Avvia l'applicazione (installazione come service)**
 ```bash
-jfhsajkfhskljdhghkjgvhdlfgkjlkjgshkjh
+cp s3cputo-webapp.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable s3cputo-webapp
+systemctl start s3cputo-webapp
 
+# Verifica start
+journalctl -u s3cputo-webapp.service -f
 ```
 
 ### **4️⃣ Accedi all'interfaccia**
@@ -111,16 +117,19 @@ jfhsajkfhskljdhghkjgvhdlfgkjlkjgshkjh
 ## 📁 Struttura Progetto
 
 ```
-cloud-storage-sync/
-├── 📄 app.py                    # 🔧 Main Flask application
-├── 📄 config.py                 # ⚙️ Provider configurations & flags
+s3cputo/
+├── 📄 start.sh                  # 🔧 Script per start application
+├── 📄 gunicorn.conf.py          # 🔧 File conf server gunicorn
+├── 📄 s3cputo-webapp.service    # 🔧 Script for service configuration
 ├── 📄 README.md                 # 📖 Questo file
-├── 📁 static/
-│   └── 📄 custom.css            # 🎨 Styling dell'interfaccia web
-├── 📁 templates/
-│   └── 📄 index.html            # 🌐 Single-page application UI
-└── 📁 tmp/                      # 📝 Directory log job (auto-creata)
-    └── 📄 job_*.log             # 📋 Log file per ogni job
+├── 📁 app/                      # 📁 Folder Application
+│   └── 📁 static/               # 📁 Folder static content
+│       └── 📄 custom.css        # 🎨 Styling dell'interfaccia web
+│   └── 📁 templates/            # 📁 Folder template html
+│       └── 📄 index.html        # 🌐 Single-page application UI
+|   └── 📄 app.py                # 🔧 Main Flask application
+|   └── 📄 config.py             # ⚙️ Provider configurations & flags
+
 ```
 
 ### **📄 File Principali**
@@ -174,7 +183,7 @@ Secret Key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 #### **GCS Service Account**
 - **File Upload**: Drag & drop del file `.json`
 - **Text Input**: Copia/incolla del contenuto JSON
-- **Project Number**: Inserimento automatico o manuale
+- **Project Number**: Inserimento manualenprojectid (required)
 
 ---
 
