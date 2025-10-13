@@ -1,0 +1,962 @@
+/*
+ * Rclone S3 Sync WebApp - Stylesheet Personalizzato
+ *
+ * Questo file contiene tutti gli stili CSS per l'interfaccia web
+ * dell'applicazione di sincronizzazione S3. Il design è ottimizzato
+ * per essere moderno, responsivo e user-friendly.
+ *
+ * Layout: Design compatto con sezioni ben organizzate
+ * - Header con gradiente e branding
+ * - Cards per ogni sezione funzionale
+ * - Layout a griglia responsivo
+ * - Console output con tema terminale
+ *
+ * Compatibilità: CSS3 moderno con fallback per browser meno recenti
+ * Responsive: Breakpoint mobile a 768px
+ */
+
+/* =============================================================================
+   RESET E CONFIGURAZIONE BASE
+   ============================================================================= */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 10px 0;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* =============================================================================
+   LAYOUT PRINCIPALE E CONTAINER
+   ============================================================================= */
+
+.container {
+    max-width: 1200px;  /* Larghezza aumentata per usare più spazio */
+    margin: 0 auto;
+    padding: 0 10px;
+}
+
+/* Header con branding e descrizione */
+.header {
+    text-align: center;
+    color: white;
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.header-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    position: relative;
+}
+
+.header-text {
+    flex: 1;
+}
+
+.header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    font-weight: 300;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.header p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* Pulsante di aiuto */
+.header-actions {
+    position: absolute;
+    top: 0;
+    right: 0;
+}
+
+.help-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50px;
+    padding: 12px 20px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.help-button:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+
+.help-button span:first-child {
+    font-size: 1.2rem;
+}
+
+/* Tooltip di aiuto */
+.help-tooltip {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 400px;
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    z-index: 1000;
+    display: none;
+    animation: tooltipFadeIn 0.3s ease;
+    margin-top: 15px;
+}
+
+.help-tooltip.show {
+    display: block;
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px 15px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.tooltip-header h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tooltip-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.tooltip-close:hover {
+    background: rgba(0,0,0,0.1);
+    color: #333;
+}
+
+.tooltip-content {
+    padding: 20px 25px 25px;
+}
+
+.help-step {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.help-step:last-of-type {
+    margin-bottom: 20px;
+    border-bottom: none;
+}
+
+.help-step strong {
+    color: #333;
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.help-step p {
+    color: #666;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.help-links {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(0,0,0,0.1);
+}
+
+.help-link {
+    flex: 1;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.help-link:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Responsive tooltip */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .header-actions {
+        position: static;
+    }
+
+    .help-tooltip {
+        width: 90vw;
+        left: 50%;
+        transform: translateX(-50%);
+        right: auto;
+    }
+
+    .help-links {
+        flex-direction: column;
+    }
+}
+
+/* =============================================================================
+   CARD SYSTEM - Sistema di carte per raggruppare contenuti
+   ============================================================================= */
+
+.card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    width: 100%;
+    box-sizing: border-box;
+    backdrop-filter: blur(10px); /* Effetto vetro smerigliato */
+}
+
+.card h3 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.4rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* =============================================================================
+   LAYOUT COMPATTO PER BUCKET - Ottimizzato per minor spazio verticale
+   ============================================================================= */
+
+/* Prima riga: Provider + Access Key + Secret Key + Pulsante */
+.credentials-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 1fr 180px;  /* Provider | Access | Secret | Pulsante */
+    gap: 15px;
+    align-items: end;
+    margin-bottom: 15px;
+}
+
+/* Seconda riga: Bucket + Path */
+.bucket-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;  /* Bucket | Path */
+    gap: 15px;
+    align-items: end;
+    margin-bottom: 15px;
+}
+
+/* =============================================================================
+   FORM ELEMENTS - Stili per input, select e label
+   ============================================================================= */
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select {
+    padding: 10px 14px;
+    border: 2px solid #e1e5e9;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    background: white;
+    transition: border-color 0.3s ease;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Specifica per select bucket - limita larghezza e gestisce testo lungo */
+#src_bucket, #dst_bucket {
+    max-width: 300px;
+    min-width: 200px;
+}
+
+/* Opzioni select con text overflow */
+.form-group select option {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* =============================================================================
+   BUTTON SYSTEM - Stili per pulsanti
+   ============================================================================= */
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    color: white;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: fit-content;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.btn-full {
+    width: 100%;
+    padding: 16px;
+    font-size: 1.1rem;
+    margin-top: 20px;
+}
+
+/* =============================================================================
+   FLAGS SYSTEM - Sistema checkbox per opzioni avanzate
+   ============================================================================= */
+
+.flags-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.checkbox-group:hover {
+    border-color: #667eea;
+    background: #f0f2ff;
+    transform: translateY(-1px);
+}
+
+/* Stile per checkbox selezionate (supporto browser moderni) */
+.checkbox-group:has(input:checked) {
+    border-color: #667eea;
+    background: #e8ecff;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #667eea;  /* Colore personalizzato checkbox */
+    cursor: pointer;
+}
+
+.checkbox-group label {
+    font-weight: 500;
+    color: #495057;
+    cursor: pointer;
+    margin: 0;
+    font-size: 0.9rem;
+    flex-grow: 1;
+}
+
+.flag-description {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+/* Testo di aiuto per i campi */
+.field-help {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 4px;
+    font-style: italic;
+    line-height: 1.3;
+}
+
+/* =============================================================================
+   GCS AUTHENTICATION - Interfaccia dinamica per autenticazione Google Cloud
+   ============================================================================= */
+
+.gcs-auth-row {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+}
+
+.auth-method-selector {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.radio-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #495057;
+}
+
+.radio-option input[type="radio"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #667eea;
+    cursor: pointer;
+}
+
+.sa-fields {
+    margin-top: 15px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.sa-fields textarea {
+    font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 120px;
+}
+
+.sa-fields input[type="file"] {
+    padding: 8px;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    background: #f8f9fa;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+.sa-fields input[type="file"]:hover {
+    border-color: #667eea;
+    background: #f0f2ff;
+}
+
+/* Stato file caricato correttamente */
+.sa-fields input[type="file"].file-loaded {
+    border-color: #28a745;
+    background: #f0fff4;
+}
+
+/* Indicatore visivo per textarea JSON valido */
+.sa-fields textarea.json-valid {
+    border-color: #28a745;
+    background: #f0fff4;
+}
+
+.sa-fields textarea.json-invalid {
+    border-color: #dc3545;
+    background: #fff5f5;
+}
+
+/* Adattamento grid per i nuovi layout */
+.credentials-row {
+    display: grid;
+    grid-template-columns: 200px 1fr 180px;  /* Provider | Creds Container | Button */
+    gap: 15px;
+    align-items: end;
+    margin-bottom: 15px;
+}
+
+.creds-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;  /* Access Key | Secret Key */
+    gap: 15px;
+}
+
+/* =============================================================================
+   COLLAPSIBLE ADVANCED OPTIONS - Sistema collasso opzioni avanzate
+   ============================================================================= */
+
+.collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: color 0.3s ease;
+}
+
+.collapsible-header:hover {
+    color: #667eea;
+}
+
+.toggle-icon {
+    font-size: 1rem;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+    margin-left: 10px;
+}
+
+.collapsible-content {
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+/* Stato collassato - inizialmente nascosto */
+.collapsible-content[style*="display: none"] {
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Stato espanso */
+.collapsible-content[style*="display: block"] {
+    max-height: 1000px;
+    opacity: 1;
+}
+
+/* =============================================================================
+   CONSOLE OUTPUT - Area terminale per log in tempo reale
+   ============================================================================= */
+
+.output-container {
+    background: #1a1a1a;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.output-header {
+    background: #333;
+    padding: 15px 20px;
+    color: white;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #555;
+}
+
+.output-content {
+    height: 400px;
+    overflow-y: auto;
+    padding: 0 20px;  /* Solo padding laterale - testo inizia dall'alto */
+    font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #00ff00;  /* Verde stile terminale */
+    background: #000;
+    white-space: pre-wrap;  /* Preserva spazi e a capo */
+    word-wrap: break-word;
+}
+
+/* Scrollbar personalizzata per area console */
+.output-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.output-content::-webkit-scrollbar-track {
+    background: #333;
+}
+
+.output-content::-webkit-scrollbar-thumb {
+    background: #666;
+    border-radius: 4px;
+}
+
+.output-content::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+/* =============================================================================
+   STATUS BAR - Indicatore stato operazioni
+   ============================================================================= */
+
+.status-bar {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    margin-top: 15px;
+    display: none;  /* Nascosto per default */
+    font-weight: 600;
+    text-align: center;
+    animation: pulse 2s infinite;
+}
+
+.status-bar.active {
+    display: block;
+}
+
+/* Animazione pulsante per status bar attiva */
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+/* =============================================================================
+   NOTIFICATION SYSTEM - Toast notifications
+   ============================================================================= */
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+    display: none;
+    z-index: 1000;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    max-width: 300px;
+    word-wrap: break-word;
+}
+
+.notification.success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+}
+
+.notification.error {
+    background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+}
+
+.notification.show {
+    display: block;
+    animation: slideInRight 0.3s ease-out;
+}
+
+/* Animazione entrata notification */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN - Adattamento per dispositivi mobili
+   ============================================================================= */
+
+@media (max-width: 768px) {
+    /* Layout mobile: tutto in colonna singola */
+    .credentials-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .bucket-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .flags-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    /* Ridimensionamento header per mobile */
+    .header h1 {
+        font-size: 2rem;
+    }
+
+    .header p {
+        font-size: 1rem;
+    }
+
+    /* Padding ridotto per schermi piccoli */
+    .container {
+        padding: 10px;
+    }
+
+    .card {
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 15px;
+    }
+
+    /* Console più compatta su mobile */
+    .output-content {
+        height: 300px;
+        padding: 15px;
+        font-size: 0.8rem;
+    }
+
+    /* Notification responsive */
+    .notification {
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+}
+
+/* =============================================================================
+   UTILITY CLASSES - Classi di utilità generale
+   ============================================================================= */
+
+/* Nasconde elementi su desktop */
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .mobile-only {
+        display: block;
+    }
+
+    .desktop-only {
+        display: none;
+    }
+}
+
+/* Classi per spacing */
+.mt-10 { margin-top: 10px; }
+.mt-20 { margin-top: 20px; }
+.mb-10 { margin-bottom: 10px; }
+.mb-20 { margin-bottom: 20px; }
+
+/* Classi per text alignment */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+/* =============================================================================
+   ACCESSIBILITY IMPROVEMENTS - Miglioramenti accessibilità
+   ============================================================================= */
+
+/* Focus visibile per navigazione da tastiera */
+button:focus,
+input:focus,
+select:focus {
+    outline: 2px solid #667eea;
+    outline-offset: 2px;
+}
+
+/* Riduzione animazioni per utenti con preferenze di movimento ridotto */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Alto contrasto per migliore leggibilità */
+@media (prefers-contrast: high) {
+    .card {
+        border: 2px solid #333;
+    }
+
+    .form-group input,
+    .form-group select {
+        border-width: 2px;
+    }
+}
+
+/* =============================================================================
+   FOOTER - Sezione footer della pagina
+   ============================================================================= */
+
+.app-footer {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px 20px 0 0;
+    margin-top: 40px;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+    border-top: 3px solid #667eea;
+}
+
+.footer-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 30px;
+    padding: 30px 40px 20px;
+    align-items: start;
+}
+
+.footer-left h4 {
+    color: #333;
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.footer-left p {
+    color: #666;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.footer-center {
+    text-align: center;
+}
+
+.footer-center p {
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.provider-badges {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.footer-right {
+    text-align: right;
+}
+
+.footer-right p {
+    color: #666;
+    font-size: 0.85rem;
+    margin: 4px 0;
+}
+
+.footer-right strong {
+    color: #333;
+}
+
+.footer-bottom {
+    text-align: center;
+    padding: 15px 40px 25px;
+    border-top: 1px solid #e9ecef;
+    margin-top: 15px;
+}
+
+.footer-bottom p {
+    color: #777;
+    font-size: 0.8rem;
+    margin: 0;
+    font-style: italic;
+}
+
+/* Responsive footer */
+@media (max-width: 768px) {
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 20px;
+        text-align: center;
+    }
+
+    .footer-right {
+        text-align: center;
+    }
+
+    .footer-bottom {
+        padding: 15px 20px 20px;
+    }
+
+    .provider-badges {
+        justify-content: center;
+    }
+}

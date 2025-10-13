@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rclone S3 Sync - WebApp</title>
+
+    <!-- CSS personalizzato con layout compatto ottimizzato -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}">
+</head>
+<body>
+    <!--
+    ==========================================================================
+    CONTAINER PRINCIPALE
+    ==========================================================================
+    Container principale che centra tutto il contenuto della pagina.
+    La larghezza massima è gestita dal CSS per un layout ottimale.
+    -->
+    <div class="container">
+
+        <!--
+        ======================================================================
+        HEADER CON BRANDING
+        ======================================================================
+        Sezione header con titolo e descrizione dell'applicazione.
+        Include emoji per rendere l'interfaccia più user-friendly.
+        -->
+        <div class="header">
+            <div class="header-content">
+                <div class="header-text">
+                    <h1>⚡ Rclone S3 Sync</h1>
+                    <p>Webapp per Sincronizzazione avanzata tra bucket S3</p>
+                </div>
+                <div class="header-actions">
+                    <button class="help-button" id="helpButton">
+                        <span>❓</span>
+                        <span class="help-text">Aiuto</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tooltip di aiuto -->
+            <div class="help-tooltip" id="helpTooltip">
+                <div class="tooltip-header">
+                    <h4>📖 Guida Rapida</h4>
+                    <button class="tooltip-close" id="tooltipClose">✕</button>
+                </div>
+                <div class="tooltip-content">
+                    <div class="help-step">
+                        <strong>1️⃣ Source (Sorgente)</strong>
+                        <p>Seleziona provider e inserisci credenziali. Per GCS puoi usare HMAC o Service Account.</p>
+                    </div>
+                    <div class="help-step">
+                        <strong>2️⃣ Destination (Destinazione)</strong>
+                        <p>Configura provider di destinazione (può essere diverso dal source).</p>
+                    </div>
+                    <div class="help-step">
+                        <strong>3️⃣ Carica Bucket</strong>
+                        <p>Click su "Lista Bucket" per caricare bucket disponibili.</p>
+                    </div>
+                    <div class="help-step">
+                        <strong>4️⃣ Avvia Sync</strong>
+                        <p>Seleziona bucket/path e clicca "Avvia Sincronizzazione".</p>
+                    </div>
+                    <div class="help-links">
+                        <a href="/README.md" target="_blank" class="help-link">
+                            📚 Manuale Completo
+                        </a>
+                        <a href="/api/jobs" target="_blank" class="help-link">
+                            🔧 API Jobs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!--
+        ======================================================================
+        FORM PRINCIPALE PER CONFIGURAZIONE SINCRONIZZAZIONE
+        ======================================================================
+        Form principale che raccoglie tutti i dati necessari per la sincronizzazione:
+        - Configurazione sorgente (provider, credenziali, bucket, path)
+        - Configurazione destinazione (provider, credenziali, bucket, path)
+        - Opzioni avanzate (flag rclone)
+        - Pulsante avvio sincronizzazione
+        -->
+        <form id="syncForm">
+
+            <!--
+            ==================================================================
+            SEZIONE SORGENTE (SOURCE)
+            ==================================================================
+            Configurazione del bucket sorgente da cui copiare i file.
+            Layout compatto:
+            - Riga 1: Provider + Access Key + Secret Key + Pulsante "Lista Bucket"
+            - Riga 2: Bucket + Path opzionale
+            -->
+            <div class="card">
+                <h3>📤 Sorgente (Source)</h3>
+
+                <!-- Prima riga: Credenziali + Pulsante -->
+                <div class="credentials-row">
+                    <div class="form-group">
+                        <label for="src_provider">Provider</label>
+                        <select id="src_provider" required onchange="handleProviderChange('src')">
+                            <option value="">Seleziona provider...</option>
+                            <!-- Le opzioni vengono popolate dinamicamente da JavaScript -->
+                        </select>
+                    </div>
+
+                    <!-- Container per credenziali dinamiche -->
+                    <div id="src_creds_container" class="creds-container">
+                        <!-- Credenziali HMAC (default) -->
+                        <div class="form-group" id="src_access_group">
+                            <label for="src_access">Access Key</label>
+                            <input id="src_access" type="text" placeholder="Inserisci Access Key" required>
+                        </div>
+                        <div class="form-group" id="src_secret_group">
+                            <label for="src_secret">Secret Key</label>
+                            <input id="src_secret" type="password" placeholder="Inserisci Secret Key" required>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary" id="load_src_buckets">
+                        Lista Bucket
+                    </button>
+                </div>
+
+                <!-- Riga per autenticazione GCS (nascosta per default) -->
+                <div class="gcs-auth-row" id="src_gcs_auth" style="display: none;">
+                    <div class="form-group">
+                        <label>Metodo Autenticazione GCS</label>
+                        <div class="auth-method-selector">
+                            <label class="radio-option">
+                                <input type="radio" name="src_auth_method" value="hmac" checked
+                                       onchange="toggleGCSAuthMethod('src', 'hmac')">
+                                HMAC (Access/Secret Key)
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="src_auth_method" value="sa"
+                                       onchange="toggleGCSAuthMethod('src', 'sa')">
+                                Service Account (JSON)
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Campi Service Account (nascosti per default) -->
+                    <div class="sa-fields" id="src_sa_fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="src_sa_method">Modalità Service Account</label>
+                            <select id="src_sa_method" onchange="toggleSAMethod('src')">
+                                <option value="file">Carica file JSON</option>
+                                <option value="text">Incolla JSON</option>
+                            </select>
+                        </div>
+
+                        <!-- Upload file -->
+                        <div class="form-group" id="src_sa_file_group">
+                            <label for="src_sa_file">File Service Account JSON</label>
+                            <input type="file" id="src_sa_file" accept=".json"
+                                   onchange="handleSAFileUpload('src')">
+                        </div>
+
+                        <!-- Textarea JSON -->
+                        <div class="form-group" id="src_sa_text_group" style="display: none;">
+                            <label for="src_sa_text">Service Account JSON</label>
+                            <textarea id="src_sa_text" rows="6"
+                                      placeholder="Incolla qui il contenuto del file JSON del Service Account..."
+                                      oninput="validateJSONInput('src')"></textarea>
+                        </div>
+
+                        <!-- Project Number per GCS Service Account -->
+                        <div class="form-group" id="src_project_number_group">
+                            <label for="src_project_number">Project Number GCS</label>
+                            <input type="text" id="src_project_number"
+                                   placeholder="es: 123456789012"
+                                   pattern="[0-9]{12}"
+                                   title="Numero progetto GCS di 12 cifre">
+                            <div class="field-help">Numero del progetto GCS (12 cifre) - obbligatorio per Service Account</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seconda riga: Bucket e path -->
+                <div class="bucket-row">
+                    <div class="form-group">
+                        <label for="src_bucket">Bucket</label>
+                        <select id="src_bucket" required>
+                            <option value="">Prima carica i bucket...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="src_path">Path (opzionale)</label>
+                        <input id="src_path" type="text" placeholder="es: folder/subfolder">
+                    </div>
+                </div>
+            </div>
+
+            <!--
+            ==================================================================
+            SEZIONE DESTINAZIONE (TARGET)
+            ==================================================================
+            Configurazione del bucket destinazione dove copiare i file.
+            Struttura identica alla sezione sorgente per coerenza UI.
+            Layout compatto:
+            - Riga 1: Provider + Access Key + Secret Key + Pulsante "Lista Bucket"
+            - Riga 2: Bucket + Path opzionale
+            -->
+            <div class="card">
+                <h3>📥 Destinazione (Target)</h3>
+
+                <!-- Prima riga: Credenziali + Pulsante -->
+                <div class="credentials-row">
+                    <div class="form-group">
+                        <label for="dst_provider">Provider</label>
+                        <select id="dst_provider" required onchange="handleProviderChange('dst')">
+                            <option value="">Seleziona provider...</option>
+                            <!-- Le opzioni vengono popolate dinamicamente da JavaScript -->
+                        </select>
+                    </div>
+
+                    <!-- Container per credenziali dinamiche -->
+                    <div id="dst_creds_container" class="creds-container">
+                        <!-- Credenziali HMAC (default) -->
+                        <div class="form-group" id="dst_access_group">
+                            <label for="dst_access">Access Key</label>
+                            <input id="dst_access" type="text" placeholder="Inserisci Access Key" required>
+                        </div>
+                        <div class="form-group" id="dst_secret_group">
+                            <label for="dst_secret">Secret Key</label>
+                            <input id="dst_secret" type="password" placeholder="Inserisci Secret Key" required>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary" id="load_dst_buckets">
+                        Lista Bucket
+                    </button>
+                </div>
+
+                <!-- Riga per autenticazione GCS (nascosta per default) -->
+                <div class="gcs-auth-row" id="dst_gcs_auth" style="display: none;">
+                    <div class="form-group">
+                        <label>Metodo Autenticazione GCS</label>
+                        <div class="auth-method-selector">
+                            <label class="radio-option">
+                                <input type="radio" name="dst_auth_method" value="hmac" checked
+                                       onchange="toggleGCSAuthMethod('dst', 'hmac')">
+                                HMAC (Access/Secret Key)
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="dst_auth_method" value="sa"
+                                       onchange="toggleGCSAuthMethod('dst', 'sa')">
+                                Service Account (JSON)
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Campi Service Account (nascosti per default) -->
+                    <div class="sa-fields" id="dst_sa_fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="dst_sa_method">Modalità Service Account</label>
+                            <select id="dst_sa_method" onchange="toggleSAMethod('dst')">
+                                <option value="file">Carica file JSON</option>
+                                <option value="text">Incolla JSON</option>
+                            </select>
+                        </div>
+
+                        <!-- Upload file -->
+                        <div class="form-group" id="dst_sa_file_group">
+                            <label for="dst_sa_file">File Service Account JSON</label>
+                            <input type="file" id="dst_sa_file" accept=".json"
+                                   onchange="handleSAFileUpload('dst')">
+                        </div>
+
+                        <!-- Textarea JSON -->
+                        <div class="form-group" id="dst_sa_text_group" style="display: none;">
+                            <label for="dst_sa_text">Service Account JSON</label>
+                            <textarea id="dst_sa_text" rows="6"
+                                      placeholder="Incolla qui il contenuto del file JSON del Service Account..."
+                                      oninput="validateJSONInput('dst')"></textarea>
+                        </div>
+
+                        <!-- Project Number per GCS Service Account -->
+                        <div class="form-group" id="dst_project_number_group">
+                            <label for="dst_project_number">Project Number GCS</label>
+                            <input type="text" id="dst_project_number"
+                                   placeholder="es: 123456789012"
+                                   pattern="[0-9]{12}"
+                                   title="Numero progetto GCS di 12 cifre">
+                            <div class="field-help">Numero del progetto GCS (12 cifre) - obbligatorio per Service Account</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seconda riga: Bucket e path -->
+                <div class="bucket-row">
+                    <div class="form-group">
+                        <label for="dst_bucket">Bucket</label>
+                        <select id="dst_bucket" required>
+                            <option value="">Prima carica i bucket...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dst_path">Path (opzionale)</label>
+                        <input id="dst_path" type="text" placeholder="es: backup/folder">
+                    </div>
+                </div>
+            </div>
+
+            <!--
+            ==================================================================
+            SEZIONE OPZIONI AVANZATE (FLAGS) - COLLASSABILE
+            ==================================================================
+            Checkbox per abilitare flag aggiuntivi di rclone.
+            Ogni flag ha una descrizione per aiutare l'utente a capire l'effetto.
+            I flag selezionati vengono inviati al backend nella richiesta di sync.
+            Sezione collassabile per risparmiare spazio quando non utilizzata.
+            -->
+            <div class="card">
+                <h3 class="collapsible-header" onclick="toggleAdvancedOptions()">
+                    ⚙️ Opzioni Avanzate
+                    <span class="toggle-icon" id="advancedToggle">▼</span>
+                </h3>
+                <div class="collapsible-content" id="advancedContent">
+                    <div class="flags-grid">
+
+                    <!-- Dry Run: Simula senza eseguire -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="flag_dry_run" name="flags" value="--dry-run">
+                        <label for="flag_dry_run">Dry Run</label>
+                        <div class="flag-description">Simula la sincronizzazione senza copiare file</div>
+                    </div>
+
+                    <!-- Delete Excluded: Elimina file esclusi dalla destinazione -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="flag_delete_excluded" name="flags" value="--delete-excluded">
+                        <label for="flag_delete_excluded">Elimina Esclusi</label>
+                        <div class="flag-description">Elimina file esclusi dalla destinazione</div>
+                    </div>
+
+                    <!-- Checksum: Verifica tramite checksum invece di data/dimensione -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="flag_checksum" name="flags" value="--checksum">
+                        <label for="flag_checksum">Verifica Checksum</label>
+                        <div class="flag-description">Usa checksum invece di data/dimensione</div>
+                    </div>
+
+                    <!-- Ignore Existing: Non sovrascrive file esistenti -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="flag_ignore_existing" name="flags" value="--ignore-existing">
+                        <label for="flag_ignore_existing">Ignora Esistenti</label>
+                        <div class="flag-description">Non sovrascrivere file esistenti</div>
+                    </div>
+
+                    <!-- Update: Sincronizza solo file più recenti -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="flag_update" name="flags" value="--update">
+                        <label for="flag_update">Solo Aggiorna</label>
+                        <div class="flag-description">Sincronizza solo file più recenti</div>
+                    </div>
+
+                    <!-- Verbose: Output dettagliato -->
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="flag_verbose" name="flags" value="--verbose">
+                        <label for="flag_verbose">Verboso</label>
+                        <div class="flag-description">Output dettagliato delle operazioni</div>
+                    </div>
+                    </div> <!-- Chiusura flags-grid -->
+                </div> <!-- Chiusura collapsible-content -->
+            </div>
+
+            <!--
+            ==================================================================
+            PULSANTE AVVIO SINCRONIZZAZIONE
+            ==================================================================
+            Pulsante principale per avviare la sincronizzazione.
+            Include barra di stato che appare durante l'esecuzione.
+            -->
+            <div class="card">
+                <button type="submit" class="btn btn-full">
+                    🚀 Avvia Sincronizzazione
+                </button>
+                <!-- Barra di stato nascosta per default, appare durante sync -->
+                <div class="status-bar" id="statusBar">
+                    ⏳ Sincronizzazione in corso...
+                </div>
+            </div>
+        </form>
+
+        <!--
+        ======================================================================
+        SEZIONE OUTPUT CONSOLE
+        ======================================================================
+        Area console per visualizzare i log in tempo reale della sincronizzazione.
+        Utilizza Server-Sent Events per ricevere aggiornamenti dal server.
+        Stile terminale con font monospaziali e colori verde su nero.
+        -->
+        <div class="card">
+            <div class="output-container">
+                <!-- Header console con titolo e pulsante pulizia -->
+                <div class="output-header">
+                    <span>💻 Output Console</span>
+                    <button type="button" class="btn btn-secondary" id="clearOutput"
+                            style="padding: 8px 12px; font-size: 0.9rem;">
+                        🗑️ Pulisci
+                    </button>
+                </div>
+                <!-- Area contenuto console con scrolling automatico -->
+                <div class="output-content" id="output">
+                    <div style="color: #888; font-style: italic;">
+                        Pronto per l'esecuzione. Configura le credenziali e avvia la sincronizzazione...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--
+    ==========================================================================
+    NOTIFICATION TOAST
+    ==========================================================================
+    Sistema di notifiche toast per feedback immediato all'utente.
+    Appare in alto a destra e si nasconde automaticamente dopo 4 secondi.
+    Supporta tipi: success (verde) ed error (rosso).
+    -->
+    <div class="notification" id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-content">
+            <div class="footer-left">
+                <h4>🔄 Cloud Storage Sync</h4>
+                <p>Sincronizzazione multi-cloud professionale</p>
+            </div>
+            <div class="footer-center">
+                <p><strong>Provider supportati:</strong></p>
+                <span class="provider-badges">
+                    <span class="badge">GCS</span>
+                    <span class="badge">ECS</span>
+                    <span class="badge">S3</span>
+                </span>
+            </div>
+            <div class="footer-right">
+                <p><strong>Versione:</strong> 1.0.0</p>
+                <p><strong>Ultimo aggiornamento:</strong> 2025-10-13</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; AlFa Tech 2025 Cloud Storage Sync - Gestione sicura e affidabile dei tuoi dati</p>
+        </div>
+    </footer>
+
+    <!--
+    ==========================================================================
+    JAVASCRIPT - LOGICA APPLICAZIONE CLIENT-SIDE
+    ==========================================================================
+    Script JavaScript per gestire l'interazione utente e comunicazione con API backend.
+
+    Funzionalità principali:
+    1. Popolamento dinamico delle select provider
+    2. Gestione caricamento bucket tramite API
+    3. Gestione form sincronizzazione
+    4. Streaming real-time log tramite Server-Sent Events
+    5. Sistema notifiche toast
+    6. Gestione UI (loading states, output console)
+    -->
+    <script>
+        // =====================================================================
+        // CONFIGURAZIONE E VARIABILI GLOBALI
+        // =====================================================================
+
+        // Dati provider passati dal backend Flask tramite template Jinja2
+        var providers = {{ providers|tojson }};
+        var providerNames = {{ provider_names|tojson }};
+
+        // Riferimenti agli elementi DOM principali per performance
+        var srcProviderSelect = document.getElementById("src_provider");
+        var dstProviderSelect = document.getElementById("dst_provider");
+        var outputEl = document.getElementById("output");
+        var statusBar = document.getElementById("statusBar");
+        var notificationEl = document.getElementById("notification");
+        var notificationText = document.getElementById("notificationText");
+
+        // Variabile globale per gestire la connessione EventSource
+        var currentEventSource = null;
+
+        // =====================================================================
+        // INIZIALIZZAZIONE - Popolazione select provider
+        // =====================================================================
+
+        // Popola le select dei provider con i dati ricevuti dal backend
+        providers.forEach(function(provider) {
+            var displayName = providerNames[provider] || provider;
+            srcProviderSelect.add(new Option(displayName, provider));
+            dstProviderSelect.add(new Option(displayName, provider));
+        });
+
+        // =====================================================================
+        // FUNZIONI UTILITY UI
+        // =====================================================================
+
+        /**
+         * Mostra una notifica toast all'utente
+         * @param {string} message - Messaggio da mostrare
+         * @param {string} type - Tipo notifica: 'success' o 'error'
+         */
+        function showNotification(message, type) {
+            type = type || 'success';
+            notificationText.textContent = message;
+            notificationEl.className = 'notification ' + type + ' show';
+
+            // Auto-hide dopo 4 secondi
+            setTimeout(function() {
+                notificationEl.className = 'notification';
+            }, 4000);
+        }
+
+        /**
+         * Aggiunge una riga di output alla console con timestamp
+         * @param {string} message - Messaggio da aggiungere
+         * @param {boolean} isError - Se true, usa colore rosso per errori
+         */
+        function updateOutput(message, isError) {
+            var timestamp = new Date().toLocaleTimeString();
+            var color = isError ? '#ff6b6b' : '#00ff00';
+            outputEl.innerHTML += '<div style="color: ' + color + ';">[' + timestamp + '] ' + message + '</div>';
+
+            // Auto-scroll in basso per mostrare sempre l'ultimo messaggio
+            outputEl.scrollTop = outputEl.scrollHeight;
+        }
+
+        /**
+         * Pulisce il contenuto della console
+         */
+        function clearOutput() {
+            outputEl.innerHTML = '<div style="color: #888; font-style: italic;">Console pulita. Pronto per nuove operazioni...</div>';
+        }
+
+        /**
+         * Gestisce lo stato di loading dei pulsanti
+         * @param {HTMLElement} button - Elemento pulsante da modificare
+         * @param {boolean} isLoading - Se true, mostra stato loading
+         */
+        function setLoading(button, isLoading) {
+            if (isLoading) {
+                button.disabled = true;
+                button.textContent = '⏳ Caricamento...';
+            } else {
+                button.disabled = false;
+                button.textContent = button.dataset.originalText || 'Lista Bucket';
+            }
+        }
+
+        // =====================================================================
+        // FUNZIONI API - Comunicazione con backend
+        // =====================================================================
+
+        /**
+         * Carica la lista bucket per un provider tramite API
+         * @param {string} provider - Nome del provider
+         * @param {object} creds - Oggetto credenziali {access_key, secret_key}
+         * @param {HTMLElement} selectElement - Element select da popolare
+         * @param {HTMLElement} buttonElement - Pulsante che ha triggerato la richiesta
+         */
+        function listBuckets(provider, creds, selectElement, buttonElement) {
+            // Validazione input - supporta sia HMAC che Service Account
+            if (!provider) {
+                showNotification('Seleziona un provider', 'error');
+                return;
+            }
+
+            // Validazione credenziali in base al tipo
+            var hasHMACCreds = creds.access_key && creds.secret_key;
+            var hasSACreds = creds.sa_credentials;
+
+            if (!hasHMACCreds && !hasSACreds) {
+                showNotification('Inserisci le credenziali (Access/Secret Key o Service Account JSON)', 'error');
+                return;
+            }
+
+            // UI: Imposta stato loading
+            setLoading(buttonElement, true);
+            updateOutput('Caricamento bucket per ' + provider + '...');
+
+            // Chiamata API per lista bucket
+            fetch("/api/list_buckets", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({provider: provider, creds: creds})
+            })
+            .then(function(response) {
+                // Parsing risposta con gestione errori HTTP
+                return response.json().then(function(data) {
+                    return {response: response, data: data};
+                });
+            })
+            .then(function(result) {
+                if (result.response.ok) {
+                    // Successo: popola select con bucket
+                    selectElement.innerHTML = "";
+                    if (result.data.buckets && result.data.buckets.length > 0) {
+                        result.data.buckets.forEach(function(bucket) {
+                            selectElement.add(new Option(bucket, bucket));
+                        });
+                        updateOutput('✅ Caricati ' + result.data.buckets.length + ' bucket');
+                        showNotification('Caricati ' + result.data.buckets.length + ' bucket con successo');
+                    } else {
+                        selectElement.innerHTML = '<option value="">Nessun bucket trovato</option>';
+                        updateOutput('⚠️ Nessun bucket trovato');
+                        showNotification('Nessun bucket trovato', 'error');
+                    }
+                } else {
+                    // Errore HTTP: mostra messaggio errore
+                    updateOutput('❌ Errore: ' + result.data.error, true);
+                    showNotification('Errore: ' + result.data.error, 'error');
+                }
+            })
+            .catch(function(error) {
+                // Errore di rete
+                updateOutput('❌ Errore di connessione: ' + error.message, true);
+                showNotification('Errore di connessione', 'error');
+            })
+            .finally(function() {
+                // Cleanup: rimuovi stato loading
+                setLoading(buttonElement, false);
+            });
+        }
+
+        // =====================================================================
+        // CREDENTIALS HANDLING - Gestione credenziali dinamiche
+        // =====================================================================
+
+        // Raccoglie credenziali in base al provider e metodo di autenticazione
+        function getCredentials(type) {
+            var provider = document.getElementById(type + '_provider').value;
+            var isGCS = provider && provider.toLowerCase().includes('gcs');
+
+            if (!isGCS) {
+                // Provider non-GCS: usa sempre HMAC
+                return {
+                    access_key: document.getElementById(type + '_access').value,
+                    secret_key: document.getElementById(type + '_secret').value
+                };
+            }
+
+            // Provider GCS: controlla metodo autenticazione
+            var authMethodElement = document.querySelector('input[name="' + type + '_auth_method"]:checked');
+            if (!authMethodElement) {
+                throw new Error('Seleziona il metodo di autenticazione per ' + type);
+            }
+            var authMethod = authMethodElement.value;
+
+            if (authMethod === 'hmac') {
+                // GCS con HMAC
+                return {
+                    access_key: document.getElementById(type + '_access').value,
+                    secret_key: document.getElementById(type + '_secret').value
+                };
+            } else {
+                // GCS con Service Account
+                var saMethodElement = document.getElementById(type + '_sa_method');
+                if (!saMethodElement) {
+                    throw new Error('Elemento SA method non trovato per ' + type);
+                }
+                var saMethod = saMethodElement.value;
+                var saCredentials;
+
+                if (saMethod === 'file') {
+                    // Usa contenuto file JSON caricato
+                    saCredentials = window[type + '_sa_json_content'];
+                    if (!saCredentials) {
+                        throw new Error('Nessun file JSON caricato per Service Account');
+                    }
+                } else {
+                    // Usa testo JSON da textarea
+                    saCredentials = document.getElementById(type + '_sa_text').value;
+                    if (!saCredentials.trim()) {
+                        throw new Error('JSON Service Account non inserito');
+                    }
+
+                    // Valida JSON
+                    try {
+                        JSON.parse(saCredentials);
+                    } catch (e) {
+                        throw new Error('JSON Service Account non valido: ' + e.message);
+                    }
+                }
+
+                // Per GCS SA: il JSON deve essere su una riga sola per rclone
+                var compactJson = JSON.stringify(JSON.parse(saCredentials));
+
+                // Ottieni Project Number (obbligatorio per GCS Service Account)
+                var projectNumber = document.getElementById(type + '_project_number').value;
+                if (!projectNumber || !projectNumber.match(/^[0-9]{12}$/)) {
+                    throw new Error('Project Number GCS obbligatorio (12 cifre) per Service Account');
+                }
+
+                return {
+                    sa_credentials: compactJson,
+                    gcs_project_number: projectNumber
+                };
+            }
+        }
+
+        // =====================================================================
+        // EVENT LISTENERS - Gestione eventi UI
+        // =====================================================================
+
+        // Listener per pulsante caricamento bucket sorgente
+        document.getElementById("load_src_buckets").addEventListener("click", function() {
+            try {
+                var provider = srcProviderSelect.value;
+                var creds = getCredentials('src');
+                listBuckets(provider, creds, document.getElementById("src_bucket"), this);
+            } catch (error) {
+                showNotification('Errore credenziali sorgente: ' + error.message, 'error');
+            }
+        });
+
+        // Listener per pulsante caricamento bucket destinazione
+        document.getElementById("load_dst_buckets").addEventListener("click", function() {
+            try {
+                var provider = dstProviderSelect.value;
+                var creds = getCredentials('dst');
+                listBuckets(provider, creds, document.getElementById("dst_bucket"), this);
+            } catch (error) {
+                showNotification('Errore credenziali destinazione: ' + error.message, 'error');
+            }
+        });
+
+        // Listener per pulsante pulizia console
+        document.getElementById("clearOutput").addEventListener("click", clearOutput);
+
+        // =====================================================================
+        // GESTIONE FORM SINCRONIZZAZIONE
+        // =====================================================================
+
+        document.getElementById("syncForm").addEventListener("submit", function(e) {
+            // Previeni submit normale del form
+            e.preventDefault();
+
+            // Chiudi eventuale connessione EventSource precedente
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+
+            // Raccolta flag selezionati dalle checkbox
+            var selectedFlags = [];
+            var flagCheckboxes = document.querySelectorAll('input[name="flags"]:checked');
+            flagCheckboxes.forEach(function(checkbox) {
+                selectedFlags.push(checkbox.value);
+            });
+
+            // Costruzione payload per API con gestione credenziali dinamiche
+            try {
+                console.log('🔍 Inizio costruzione payload sincronizzazione');
+                var formData = {
+                    src_provider: srcProviderSelect.value,
+                    dst_provider: dstProviderSelect.value,
+                    src_bucket: document.getElementById("src_bucket").value,
+                    dst_bucket: document.getElementById("dst_bucket").value,
+                    src_path: document.getElementById("src_path").value,
+                    dst_path: document.getElementById("dst_path").value,
+                    src_creds: getCredentials('src'),
+                    dst_creds: getCredentials('dst'),
+                    additional_flags: selectedFlags
+                };
+
+                console.log('✅ Payload costruito:', formData);
+
+                // Validazione campi obbligatori di base
+                if (!formData.src_provider || !formData.dst_provider ||
+                    !formData.src_bucket || !formData.dst_bucket) {
+                    showNotification('Compila tutti i campi obbligatori (provider e bucket)', 'error');
+                    return;
+                }
+
+                // Validazione credenziali (diversa per HMAC vs SA)
+                if (!validateCredentials(formData.src_creds, 'sorgente') ||
+                    !validateCredentials(formData.dst_creds, 'destinazione')) {
+                    return;
+                }
+
+            } catch (error) {
+                console.error('❌ Errore costruzione payload:', error);
+                showNotification('Errore nella configurazione: ' + error.message, 'error');
+                return;
+            }
+
+            // Funzione helper per validare credenziali
+            function validateCredentials(creds, label) {
+                if (creds.access_key !== undefined) {
+                    // Modalità HMAC
+                    if (!creds.access_key || !creds.secret_key) {
+                        showNotification('Access Key e Secret Key obbligatori per ' + label, 'error');
+                        return false;
+                    }
+                } else if (creds.sa_credentials !== undefined) {
+                    // Modalità Service Account
+                    if (!creds.sa_credentials) {
+                        showNotification('Service Account JSON obbligatorio per ' + label, 'error');
+                        return false;
+                    }
+                } else {
+                    showNotification('Credenziali non configurate per ' + label, 'error');
+                    return false;
+                }
+                return true;
+            }
+
+            // UI: Mostra stato sincronizzazione attiva
+            statusBar.classList.add('active');
+            updateOutput('🚀 Avvio sincronizzazione...');
+
+            // Mostra flag selezionati se presenti
+            if (selectedFlags.length > 0) {
+                updateOutput('⚙️ Flag attivi: ' + selectedFlags.join(', '));
+            }
+
+            // Chiamata API per avvio sincronizzazione
+            fetch("/api/copy", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(formData)
+            })
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(data) {
+                if (data.job_id) {
+                    // Successo: job avviato, inizia streaming log
+                    updateOutput('✅ Job avviato con ID: ' + data.job_id);
+                    showNotification('Sincronizzazione avviata con successo');
+
+                    // =========================================================
+                    // STREAMING LOG VIA SERVER-SENT EVENTS
+                    // =========================================================
+
+                    // Apri connessione EventSource per ricevere log real-time
+                    currentEventSource = new EventSource('/api/log/' + data.job_id);
+
+                    // Handler per messaggi log
+                    currentEventSource.onmessage = function(event) {
+                        var logLine = event.data;
+
+                        // Controlla segnale di fine stream
+                        if (logLine === '[STREAM_END]') {
+                            currentEventSource.close();
+                            statusBar.classList.remove('active');
+                            updateOutput('🏁 Sincronizzazione completata');
+                            showNotification('Sincronizzazione completata');
+                        } else {
+                            // Aggiungi riga di log alla console
+                            updateOutput(logLine);
+                        }
+                    };
+
+                    // Handler per errori connessione EventSource
+                    currentEventSource.onerror = function() {
+                        currentEventSource.close();
+                        statusBar.classList.remove('active');
+                        updateOutput('❌ Connessione ai log interrotta', true);
+                        showNotification('Connessione ai log interrotta', 'error');
+                    };
+                } else {
+                    // Errore avvio job
+                    statusBar.classList.remove('active');
+                    updateOutput('❌ Errore avvio: ' + data.error, true);
+                    showNotification('Errore: ' + data.error, 'error');
+                }
+            })
+            .catch(function(error) {
+                // Errore di rete
+                statusBar.classList.remove('active');
+                updateOutput('❌ Errore di connessione: ' + error.message, true);
+                showNotification('Errore di connessione', 'error');
+            });
+        });
+
+        // =====================================================================
+        // GCS AUTHENTICATION - Gestione dinamica autenticazione Google Cloud
+        // =====================================================================
+
+        // Gestisce il cambio di provider (mostra/nasconde opzioni GCS)
+        function handleProviderChange(type) {
+            var providerSelect = document.getElementById(type + '_provider');
+            var gcsAuthRow = document.getElementById(type + '_gcs_auth');
+            var credsContainer = document.getElementById(type + '_creds_container');
+            var projectNumberGroup = document.getElementById(type + '_project_number_group');
+
+            var selectedProvider = providerSelect.value;
+            var isGCS = selectedProvider && selectedProvider.toLowerCase().includes('gcs');
+
+            if (isGCS) {
+                // Mostra opzioni GCS
+                gcsAuthRow.style.display = 'block';
+                // Reset al metodo HMAC di default
+                document.querySelector('input[name="' + type + '_auth_method"][value="hmac"]').checked = true;
+                toggleGCSAuthMethod(type, 'hmac');
+            } else {
+                // Nasconde opzioni GCS, mostra credenziali standard
+                gcsAuthRow.style.display = 'none';
+                projectNumberGroup.style.display = 'none';
+                showHMACFields(type);
+            }
+        }
+
+        // Cambia metodo autenticazione GCS (HMAC vs Service Account)
+        function toggleGCSAuthMethod(type, method) {
+            var saFields = document.getElementById(type + '_sa_fields');
+            var projectNumberGroup = document.getElementById(type + '_project_number_group');
+
+            if (method === 'hmac') {
+                // Mostra campi HMAC standard
+                showHMACFields(type);
+                saFields.style.display = 'none';
+                // Nasconde Project Number per HMAC
+                projectNumberGroup.style.display = 'none';
+            } else if (method === 'sa') {
+                // Mostra campi Service Account
+                hideHMACFields(type);
+                saFields.style.display = 'block';
+                // Mostra Project Number per Service Account
+                projectNumberGroup.style.display = 'block';
+                // Default: modalità file
+                toggleSAMethod(type);
+            }
+        }
+
+        // Gestisce modalità Service Account (file vs text)
+        function toggleSAMethod(type) {
+            var saMethod = document.getElementById(type + '_sa_method').value;
+            var fileGroup = document.getElementById(type + '_sa_file_group');
+            var textGroup = document.getElementById(type + '_sa_text_group');
+
+            if (saMethod === 'file') {
+                fileGroup.style.display = 'block';
+                textGroup.style.display = 'none';
+            } else if (saMethod === 'text') {
+                fileGroup.style.display = 'none';
+                textGroup.style.display = 'block';
+            }
+        }
+
+        // Utility: mostra campi HMAC
+        function showHMACFields(type) {
+            document.getElementById(type + '_access_group').style.display = 'block';
+            document.getElementById(type + '_secret_group').style.display = 'block';
+            // Aggiungi required per validazione
+            document.getElementById(type + '_access').setAttribute('required', '');
+            document.getElementById(type + '_secret').setAttribute('required', '');
+        }
+
+        // Utility: nasconde campi HMAC
+        function hideHMACFields(type) {
+            document.getElementById(type + '_access_group').style.display = 'none';
+            document.getElementById(type + '_secret_group').style.display = 'none';
+            // Rimuovi required per evitare validazione su campi nascosti
+            document.getElementById(type + '_access').removeAttribute('required');
+            document.getElementById(type + '_secret').removeAttribute('required');
+        }
+
+        // Gestisce upload file Service Account JSON
+        function handleSAFileUpload(type) {
+            var fileInput = document.getElementById(type + '_sa_file');
+            var file = fileInput.files[0];
+
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        // Valida che sia JSON valido
+                        var jsonContent = e.target.result;
+                        JSON.parse(jsonContent);  // Test validità
+
+                        // Salva il contenuto per uso successivo
+                        window[type + '_sa_json_content'] = jsonContent;
+
+                        // Feedback visivo
+                        fileInput.classList.add('file-loaded');
+                        showNotification('File JSON caricato correttamente: ' + file.name, 'success');
+                    } catch (error) {
+                        showNotification('Errore: File JSON non valido', 'error');
+                        fileInput.value = '';  // Reset input
+                        fileInput.classList.remove('file-loaded');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Valida JSON in tempo reale nella textarea
+        function validateJSONInput(type) {
+            var textarea = document.getElementById(type + '_sa_text');
+            var value = textarea.value.trim();
+
+            if (!value) {
+                // Campo vuoto: rimuovi classi di validazione
+                textarea.classList.remove('json-valid', 'json-invalid');
+                return;
+            }
+
+            try {
+                JSON.parse(value);
+                // JSON valido
+                textarea.classList.remove('json-invalid');
+                textarea.classList.add('json-valid');
+            } catch (error) {
+                // JSON non valido
+                textarea.classList.remove('json-valid');
+                textarea.classList.add('json-invalid');
+            }
+        }
+
+        // =====================================================================
+        // COLLAPSIBLE ADVANCED OPTIONS - Gestione collasso opzioni avanzate
+        // =====================================================================
+
+        // Funzione per gestire l'apertura/chiusura delle opzioni avanzate
+        function toggleAdvancedOptions() {
+            var content = document.getElementById('advancedContent');
+            var toggleIcon = document.getElementById('advancedToggle');
+
+            if (content.style.display === 'none') {
+                // Apri le opzioni
+                content.style.display = 'block';
+                toggleIcon.textContent = '▼';
+                // Memorizza lo stato (opzionale)
+                localStorage.setItem('advancedOptionsExpanded', 'true');
+            } else {
+                // Chiudi le opzioni
+                content.style.display = 'none';
+                toggleIcon.textContent = '▶';
+                // Memorizza lo stato (opzionale)
+                localStorage.setItem('advancedOptionsExpanded', 'false');
+            }
+        }
+
+        // Ripristina lo stato salvato delle opzioni avanzate al caricamento della pagina
+        document.addEventListener('DOMContentLoaded', function() {
+            var content = document.getElementById('advancedContent');
+            var toggleIcon = document.getElementById('advancedToggle');
+            var savedState = localStorage.getItem('advancedOptionsExpanded');
+
+            // Per default le opzioni sono chiuse (state collassato)
+            if (savedState === 'true') {
+                content.style.display = 'block';
+                toggleIcon.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                toggleIcon.textContent = '▶';
+            }
+
+            // Inizializza interfaccia GCS per entrambi i provider
+            handleProviderChange('src');
+            handleProviderChange('dst');
+        });
+
+        // =====================================================================
+        // HELP TOOLTIP - Gestione tooltip di aiuto
+        // =====================================================================
+
+        // Gestione apertura/chiusura tooltip aiuto
+        document.addEventListener('DOMContentLoaded', function() {
+            const helpButton = document.getElementById('helpButton');
+            const helpTooltip = document.getElementById('helpTooltip');
+            const tooltipClose = document.getElementById('tooltipClose');
+
+            // Apri/chiudi tooltip
+            helpButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                helpTooltip.classList.toggle('show');
+
+                // Aggiungi log per debug
+                console.log('🔍 Tooltip aiuto:', helpTooltip.classList.contains('show') ? 'aperto' : 'chiuso');
+            });
+
+            // Chiudi tooltip con X
+            tooltipClose.addEventListener('click', function(e) {
+                e.stopPropagation();
+                helpTooltip.classList.remove('show');
+                console.log('✕ Tooltip aiuto chiuso');
+            });
+
+            // Chiudi tooltip clickando fuori
+            document.addEventListener('click', function(e) {
+                if (!helpTooltip.contains(e.target) && !helpButton.contains(e.target)) {
+                    helpTooltip.classList.remove('show');
+                }
+            });
+
+            // Previeni chiusura quando si clicca dentro il tooltip
+            helpTooltip.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // Chiudi tooltip con ESC
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && helpTooltip.classList.contains('show')) {
+                    helpTooltip.classList.remove('show');
+                    console.log('⌨️ Tooltip aiuto chiuso con ESC');
+                }
+            });
+        });
+
+        // =====================================================================
+        // CLEANUP - Gestione chiusura pagina
+        // =====================================================================
+
+        // Chiudi connessione EventSource quando l'utente chiude/ricarica la pagina
+        window.addEventListener('beforeunload', function() {
+            if (currentEventSource) {
+                currentEventSource.close();
+            }
+        });
+    </script>
+</body>
+</html>
