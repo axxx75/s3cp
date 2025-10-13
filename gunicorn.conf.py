@@ -5,6 +5,8 @@ workers = multiprocessing.cpu_count()
 
 # Host e porta
 bind = "0.0.0.0:8080"
+certfile = "/opt/s3cputo/app/server.crt"
+keyfile = "/opt/s3cputo/app/server.key"
 
 # Log file persistenti
 errorlog = "/var/log/s3cputo/error.log"
