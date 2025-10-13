@@ -9,7 +9,7 @@ Applicazione web professionale per la sincronizzazione multi-cloud di storage ut
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-production-brightgreen)
 
-**Provider Supportati:** GCS • ECS • S3 • MinIO • R2
+**Provider Supportati:** GCS • ECS • S3 • 
 
 </div>
 
