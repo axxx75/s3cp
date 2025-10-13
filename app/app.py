@@ -13,7 +13,7 @@ Funzionalità principali:
 - Supporto per flag aggiuntivi di rclone
 - Compatibile con Python 3.6+
 
-Autore: Franza con l'aiuto di MiniMax Agent
+Autore: Axxx con l'aiuto di MiniMax Agent
 Data: 2025-10-13
 """
 
