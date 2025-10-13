@@ -32,6 +32,10 @@
                     <p>Webapp per Sincronizzazione avanzata tra bucket S3</p>
                 </div>
                 <div class="header-actions">
+                    <button class="theme-toggle" id="themeToggle">
+                        <span class="theme-toggle-icon" id="themeIcon">🌙</span>
+                        <span class="theme-toggle-text" id="themeText">Dark</span>
+                    </button>
                     <button class="help-button" id="helpButton">
                         <span>❓</span>
                         <span class="help-text">Aiuto</span>
@@ -465,6 +469,14 @@
     4. Streaming real-time log tramite Server-Sent Events
     5. Sistema notifiche toast
     6. Gestione UI (loading states, output console)
+
+    ⚠️  NOTA SICUREZZA:
+    Le credenziali vengono comunque inviate in chiaro nelle richieste HTTP (visibili in Network tab).
+    Per maggiore sicurezza in produzione:
+    - Utilizzare sempre HTTPS
+    - Implementare autenticazione session-based
+    - Considerare cifratura client-side delle credenziali
+    - Utilizzare token temporanei invece di credenziali permanenti
     -->
     <script>
         // =====================================================================
@@ -554,6 +566,34 @@
         }
 
         // =====================================================================
+        // FUNZIONI UTILITY SICUREZZA
+        // =====================================================================
+
+        /**
+         * Crea un log sicuro delle credenziali senza esporre valori sensibili
+         * @param {object} creds - Oggetto credenziali
+         * @param {string} label - Etichetta per identificare le credenziali
+         * @returns {object} - Oggetto con informazioni safe per log
+         */
+        function createSafeCredentialsLog(creds, label) {
+            var safeLog = { type: label };
+            
+            if (creds.access_key) {
+                safeLog.auth_method = 'HMAC';
+                safeLog.access_key_length = creds.access_key.length;
+                safeLog.has_secret_key = !!creds.secret_key;
+            }
+            
+            if (creds.sa_credentials) {
+                safeLog.auth_method = 'Service Account';
+                safeLog.sa_json_length = creds.sa_credentials.length;
+                safeLog.has_project_number = !!creds.gcs_project_number;
+            }
+            
+            return safeLog;
+        }
+
+        // =====================================================================
         // FUNZIONI API - Comunicazione con backend
         // =====================================================================
 
@@ -583,6 +623,12 @@
             // UI: Imposta stato loading
             setLoading(buttonElement, true);
             updateOutput('Caricamento bucket per ' + provider + '...');
+
+            // Log sicuro per debug (senza esporre credenziali)
+            console.log('🔍 Chiamata list_buckets:', {
+                provider: provider,
+                creds_info: createSafeCredentialsLog(creds, 'API_Call')
+            });
 
             // Chiamata API per lista bucket
             fetch("/api/list_buckets", {
@@ -768,7 +814,19 @@
                     additional_flags: selectedFlags
                 };
 
-                console.log('✅ Payload costruito:', formData);
+                // SICUREZZA: Log rimosso per evitare esposizione credenziali in console browser
+                // console.log('✅ Payload costruito:', formData);
+                console.log('✅ Payload costruito per sincronizzazione:', {
+                    src_provider: formData.src_provider,
+                    dst_provider: formData.dst_provider,
+                    src_bucket: formData.src_bucket,
+                    dst_bucket: formData.dst_bucket,
+                    src_path: formData.src_path || '(root)',
+                    dst_path: formData.dst_path || '(root)',
+                    flags_count: formData.additional_flags.length,
+                    src_creds_info: createSafeCredentialsLog(formData.src_creds, 'Source'),
+                    dst_creds_info: createSafeCredentialsLog(formData.dst_creds, 'Destination')
+                });
 
                 // Validazione campi obbligatori di base
                 if (!formData.src_provider || !formData.dst_provider ||
@@ -1056,6 +1114,73 @@
             // Inizializza interfaccia GCS per entrambi i provider
             handleProviderChange('src');
             handleProviderChange('dst');
+        });
+
+        // =====================================================================
+        // THEME TOGGLE - Gestione tema dark/light
+        // =====================================================================
+
+        // Inizializza il tema al caricamento della pagina
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const body = document.body;
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            // Applica il tema salvato
+            body.setAttribute('data-theme', savedTheme);
+            
+            // Aggiorna l'icona e il testo del toggle
+            if (savedTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            }
+            
+            console.log('🎨 Tema inizializzato:', savedTheme);
+        }
+
+        // Gestisce il cambio di tema
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            const themeIcon = document.getElementById('themeIcon');
+            const themeText = document.getElementById('themeText');
+            
+            // Applica il nuovo tema
+            body.setAttribute('data-theme', newTheme);
+            
+            // Salva la preferenza
+            localStorage.setItem('theme', newTheme);
+            
+            // Aggiorna l'icona e il testo
+            if (newTheme === 'dark') {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+            }
+            
+            console.log('🎨 Tema cambiato a:', newTheme);
+            
+            // Mostra notifica di conferma
+            showNotification('Tema ' + (newTheme === 'dark' ? 'scuro' : 'chiaro') + ' attivato', 'success');
+        }
+
+        // Event listener per il toggle tema
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inizializza il tema
+            initializeTheme();
+            
+            // Aggiungi listener al pulsante toggle
+            const themeToggle = document.getElementById('themeToggle');
+            themeToggle.addEventListener('click', toggleTheme);
+            
+            console.log('🎨 Sistema tema inizializzato');
         });
 
         // =====================================================================
