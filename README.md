@@ -102,6 +102,12 @@ cp s3cputo-webapp.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable s3cputo-webapp
 systemctl start s3cputo-webapp
+```
+
+# Se vuoi il server in HTTPS scommenta le 2 righe nel file gunicorn.conf.py
+Documentati bene su come farlo seriamente, eventualmente con una CA. Al volo puoi fare come segue, crea i file server.crt e server.key nella dir dell'app
+```bash
+ openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -days 365 -subj "/CN=localhost"
 
 # Verifica start
 journalctl -u s3cputo-webapp.service -f
