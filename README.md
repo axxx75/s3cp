@@ -522,39 +522,6 @@ echo "⏳ Monitoraggio job paralleli..."
 
 ---
 
-### **📈 Enterprise Integration**
-
-#### **Webhook Notifications**
-```python
-import requests
-import json
-
-def sync_with_notifications(config, webhook_url):
-    """Sync con notifiche Slack/Teams"""
-
-    # Avvia job
-    response = requests.post("http://localhost:8081/api/copy", json=config)
-    job_id = response.json()["job_id"]
-
-    # Notifica avvio
-    requests.post(webhook_url, json={
-        "text": f"🚀 Sync avviato: {job_id}",
-        "color": "warning"
-    })
-
-    # Monitora e notifica risultato
-    with requests.get(f"http://localhost:8081/api/log/{job_id}", stream=True) as r:
-        for line in r.iter_lines():
-            if line and "STREAM_END" in line.decode():
-                requests.post(webhook_url, json={
-                    "text": f"✅ Sync completato: {job_id}",
-                    "color": "good"
-                })
-                break
-```
-
----
-
 ## 🔧 Troubleshooting
 
 ### **❌ Errori Comuni**
@@ -652,47 +619,6 @@ grep "ERROR\|CRITICAL" /tmp/flask_app.log
 
 ---
 
-## 🤝 Contributi
-
-### **🛠️ Sviluppo Locale**
-
-```bash
-# Clone repository
-git clone <repo-url>
-cd cloud-storage-sync
-
-# Setup environment
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Development mode
-export FLASK_ENV=development
-python app.py
-```
-
-### **📝 Code Style**
-
-- **Python**: PEP 8 compliance
-- **JavaScript**: ES6+ features
-- **CSS**: BEM methodology
-- **Comments**: Comprehensive documentation
-
-### **🧪 Testing**
-
-```bash
-# Test API endpoints
-python -m pytest tests/
-
-# Manual testing
-curl -X POST http://localhost:8081/api/list_buckets \
-  -H "Content-Type: application/json" \
-  -d '{"provider": "test", "creds": {}}'
-```
-
 ### **📦 Features Richieste**
 
 - [ ] **Docker support** per deployment facile
@@ -712,15 +638,14 @@ curl -X POST http://localhost:8081/api/list_buckets \
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-repo/issues)
-- **Documentation**: [Wiki](https://github.com/your-repo/wiki)
-- **Discussions**: [GitHub Discussions](https://github.com/your-repo/discussions)
+- **Issues**: [GitHub Issues](https://github.com/axxx75/s3cp/issues)
+- **Documentation**: [Wiki](https://github.com/axxx75/s3cp/wiki)
 
 ---
 
 <div align="center">
 
-**Sviluppato con ❤️ da Franza e MiniMax Agent**
+**Sviluppato con ❤️ da Axxx e MiniMax Agent**
 
 *Sincronizzazione cloud sicura e affidabile per i tuoi dati*
 
