@@ -80,7 +80,7 @@ python-dotenv>=0.19.0
 ### **1️⃣ Clona e Installa**
 ```bash
 git clone https://github.com/axxx75/s3cp.git
-cd s3cpp
+cd s3cp
 pip install -U pip
 python3 -m venv venv
 source venv/bin/activate
