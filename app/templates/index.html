@@ -67,7 +67,7 @@
                         <p>Seleziona bucket/path e clicca "Avvia Sincronizzazione".</p>
                     </div>
                     <div class="help-links">
-                        <a href="/README.md" target="_blank" class="help-link">
+                        <a href="/md/README.md" target="_blank" class="help-link">
                             📚 Manuale Completo
                         </a>
                         <a href="/api/jobs" target="_blank" class="help-link">
@@ -124,10 +124,6 @@
                             <input id="src_secret" type="password" placeholder="Inserisci Secret Key" required>
                         </div>
                     </div>
-
-                    <button type="button" class="btn btn-secondary" id="load_src_buckets">
-                        Lista Bucket
-                    </button>
                 </div>
 
                 <!-- Riga per autenticazione GCS (nascosta per default) -->
@@ -185,8 +181,11 @@
                     </div>
                 </div>
 
-                <!-- Seconda riga: Bucket e path -->
+                <!-- Seconda riga: Lista bucket, Bucket e path -->
                 <div class="bucket-row">
+                    <button type="button" class="btn btn-secondary" id="load_src_buckets">
+                        Lista Bucket
+                    </button>
                     <div class="form-group">
                         <label for="src_bucket">Bucket</label>
                         <select id="src_bucket" required>
@@ -235,10 +234,6 @@
                             <input id="dst_secret" type="password" placeholder="Inserisci Secret Key" required>
                         </div>
                     </div>
-
-                    <button type="button" class="btn btn-secondary" id="load_dst_buckets">
-                        Lista Bucket
-                    </button>
                 </div>
 
                 <!-- Riga per autenticazione GCS (nascosta per default) -->
@@ -296,8 +291,11 @@
                     </div>
                 </div>
 
-                <!-- Seconda riga: Bucket e path -->
+                <!-- Seconda riga: Lista bucket, Bucket e path -->
                 <div class="bucket-row">
+                    <button type="button" class="btn btn-secondary" id="load_dst_buckets">
+                        Lista Bucket
+                    </button>
                     <div class="form-group">
                         <label for="dst_bucket">Bucket</label>
                         <select id="dst_bucket" required>
@@ -577,19 +575,19 @@
          */
         function createSafeCredentialsLog(creds, label) {
             var safeLog = { type: label };
-            
+
             if (creds.access_key) {
                 safeLog.auth_method = 'HMAC';
                 safeLog.access_key_length = creds.access_key.length;
                 safeLog.has_secret_key = !!creds.secret_key;
             }
-            
+
             if (creds.sa_credentials) {
                 safeLog.auth_method = 'Service Account';
                 safeLog.sa_json_length = creds.sa_credentials.length;
                 safeLog.has_project_number = !!creds.gcs_project_number;
             }
-            
+
             return safeLog;
         }
 
@@ -1126,10 +1124,10 @@
             const body = document.body;
             const themeIcon = document.getElementById('themeIcon');
             const themeText = document.getElementById('themeText');
-            
+
             // Applica il tema salvato
             body.setAttribute('data-theme', savedTheme);
-            
+
             // Aggiorna l'icona e il testo del toggle
             if (savedTheme === 'dark') {
                 themeIcon.textContent = '☀️';
@@ -1138,7 +1136,7 @@
                 themeIcon.textContent = '🌙';
                 themeText.textContent = 'Dark';
             }
-            
+
             console.log('🎨 Tema inizializzato:', savedTheme);
         }
 
@@ -1149,13 +1147,13 @@
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             const themeIcon = document.getElementById('themeIcon');
             const themeText = document.getElementById('themeText');
-            
+
             // Applica il nuovo tema
             body.setAttribute('data-theme', newTheme);
-            
+
             // Salva la preferenza
             localStorage.setItem('theme', newTheme);
-            
+
             // Aggiorna l'icona e il testo
             if (newTheme === 'dark') {
                 themeIcon.textContent = '☀️';
@@ -1164,9 +1162,9 @@
                 themeIcon.textContent = '🌙';
                 themeText.textContent = 'Dark';
             }
-            
+
             console.log('🎨 Tema cambiato a:', newTheme);
-            
+
             // Mostra notifica di conferma
             showNotification('Tema ' + (newTheme === 'dark' ? 'scuro' : 'chiaro') + ' attivato', 'success');
         }
@@ -1175,11 +1173,11 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Inizializza il tema
             initializeTheme();
-            
+
             // Aggiungi listener al pulsante toggle
             const themeToggle = document.getElementById('themeToggle');
             themeToggle.addEventListener('click', toggleTheme);
-            
+
             console.log('🎨 Sistema tema inizializzato');
         });
 
