@@ -23,16 +23,65 @@ import subprocess
 import logging
 import configparser
 import time
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, redirect
 
 # Import configurazioni personalizzate
-from app.config import get_provider_flags, GLOBAL_FLAGS, RCLONE_CONF
+from app.config import get_provider_flags, GLOBAL_FLAGS, RCLONE_CONF, Config
 
 # =============================================================================
 # CONFIGURAZIONE APPLICAZIONE FLASK
 # =============================================================================
 
 app = Flask(__name__)
+
+# Middleware per forzare HTTPS in produzione
+@app.before_request
+def force_https():
+    """Forza HTTPS in produzione se configurato"""
+    # Compatibilità con sistemi senza configurazioni SSL
+    if hasattr(Config, 'FORCE_HTTPS'):
+        try:
+            force_https_enabled = getattr(Config(), 'FORCE_HTTPS', False)
+            if force_https_enabled:
+                if not request.is_secure and not request.headers.get('X-Forwarded-Proto') == 'https':
+                    # Redirect a HTTPS solo se non siamo in sviluppo locale
+                    if not (request.host.startswith('localhost') or request.host.startswith('127.0.0.1')):
+                        return redirect(request.url.replace('http://', 'https://'), code=301)
+        except AttributeError:
+            # Ignora silenziosamente se la configurazione non esiste
+            pass
+
+# Security headers per HTTPS
+@app.after_request
+def set_security_headers(response):
+    """Aggiunge header di sicurezza per HTTPS"""
+    config = Config()
+
+    # Compatibilità con sistemi senza configurazioni SSL
+    ssl_enabled = getattr(config, 'SSL_ENABLED', False)
+    force_https = getattr(config, 'FORCE_HTTPS', False)
+
+    if ssl_enabled or force_https:
+        # HSTS - Forza HTTPS per future richieste
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+        # Content Security Policy - Previene mixed content
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data:; "
+            "connect-src 'self'; "
+            "upgrade-insecure-requests"
+        )
+
+        # Altri header di sicurezza
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+    return response
 
 # Directory per i log dei job di sincronizzazione
 LOG_DIR = "/tmp/rclone_jobs"
@@ -51,7 +100,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),  # Console output
-        logging.FileHandler('/tmp/flask_app.log', mode='a')  # File output per debug
+        logging.FileHandler('/var/log/s3cputo/flask_app.log', mode='a')  # File output per debug
     ]
 )
 
@@ -142,16 +191,16 @@ def build_remote(provider, bucket, path=''):
     if path and path.strip():
         # Pulisce il path: rimuove solo slash iniziali/finali e normalizza
         clean_path = path.strip().strip('/')
-        
+
         # Normalizza separatori multipli
         import re
         clean_path = re.sub(r'/+', '/', clean_path)
-        
+
         # Rimuove solo caratteri veramente problematici per rclone
         # Mantiene: lettere, numeri, spazi, trattini, underscore, punti e slash
         # Rimuove solo: @#$%^&*(){}[]|\"'<>?`~+=
         clean_path = re.sub(r'[@#$%^&*(){}[\]|"\'<>?`~+=]', '', clean_path)
-        
+
         if clean_path:
             remote += '/' + clean_path
 
@@ -177,7 +226,7 @@ def run_rclone(cmd, env):
         per permettere lo streaming real-time all'interfaccia web.
     """
     import threading
-    
+
     # Genera ID univoco per il job
     job_id = uuid.uuid4().hex
     log_file = os.path.join(LOG_DIR, "job_{}.log".format(job_id))
@@ -204,14 +253,14 @@ def run_rclone(cmd, env):
             with open(log_file, "a") as f:
                 f.write("[JOB {}] PROCESS STARTED (PID: {})\n".format(job_id, proc.pid))
                 f.flush()
-                
+
                 for line in proc.stdout:
                     f.write(line)
                     f.flush()  # Forza scrittura immediata per streaming
 
                 # Aspetta completamento processo
                 proc.wait()
-                
+
                 # Scrive risultato finale
                 f.write("[JOB {}] PROCESS COMPLETED (Exit Code: {})\n".format(job_id, proc.returncode))
                 f.flush()
@@ -709,24 +758,27 @@ def jobs():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/README.md')
-def readme():
-    """
-    Serve il file README.md per documentazione utente.
 
-    Returns:
-        Response: Contenuto del README.md con content-type text/plain
+@app.route("/md/<path:filename>")
+def show_markdown(filename):
+    import markdown, os
+    base_dir = app.root_path  # o un'altra cartella
+    file_path = os.path.join(base_dir, filename)
+
+    if not os.path.isfile(file_path):
+        return "File non trovato", 404
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        html = markdown.markdown(f.read())
+
+    return f"""
+    <html>
+      <head><title>{filename}</title></head>
+      <body style="max-width:800px; margin:auto; font-family:sans-serif;">
+        {html}
+      </body>
+    </html>
     """
-    try:
-        readme_path = os.path.join(os.path.dirname(__file__), 'README.md')
-        with open(readme_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return Response(content, mimetype='text/plain; charset=utf-8')
-    except FileNotFoundError:
-        return "README.md non trovato", 404
-    except Exception as e:
-        app.logger.error(f"Errore lettura README: {str(e)}")
-        return "Errore nel caricamento del manuale", 500
 
 
 # =============================================================================
@@ -762,8 +814,46 @@ if __name__ == "__main__":
     else:
         print("⚠️  Config non trovata: {}".format(RCLONE_CONF))
 
-    print("\n🌐 Server in ascolto su http://0.0.0.0:8080")
+    # Configurazione del server
+    config = Config()
+
+    # Compatibilità con sistemi senza configurazioni SSL
+    ssl_enabled = getattr(config, 'SSL_ENABLED', False)
+    ssl_cert_path = getattr(config, 'SSL_CERT_PATH', '')
+    ssl_key_path = getattr(config, 'SSL_KEY_PATH', '')
+
+    # Determina protocollo e SSL context
+    protocol = "https" if ssl_enabled else "http"
+    ssl_context = None
+
+    if ssl_enabled:
+        try:
+            # Verifica esistenza certificati SSL
+            if ssl_cert_path and ssl_key_path and os.path.exists(ssl_cert_path) and os.path.exists(ssl_key_path):
+                ssl_context = (ssl_cert_path, ssl_key_path)
+                print("✅ Certificati SSL trovati")
+            else:
+                print("⚠️  Certificati SSL non trovati, generazione certificato auto-firmato...")
+                ssl_context = 'adhoc'  # Flask genererà certificato auto-firmato
+                print("📝 ATTENZIONE: Usato certificato auto-firmato (solo per sviluppo)")
+        except Exception as e:
+            print("❌ Errore configurazione SSL: {}".format(str(e)))
+            print("🔄 Fallback a HTTP...")
+            ssl_enabled = False
+            protocol = "http"
+
+    print("\n🌐 Server in ascolto su {}://{}:{}".format(protocol, config.HOST, config.PORT))
     print("📖 Documentazione API disponibile negli endpoint /api/*")
 
-    # Avvio server Flask
-    app.run(host="0.0.0.0", port=8080, debug=True)
+    if ssl_enabled:
+        print("🔒 SSL/HTTPS abilitato")
+        if ssl_context == 'adhoc':
+            print("⚠️  Certificato auto-firmato (accetta l'avviso nel browser)")
+
+    # Avvio server Flask con supporto SSL opzionale
+    app.run(
+        host=config.HOST,
+        port=config.PORT,
+        debug=config.DEBUG,
+        ssl_context=ssl_context
+    )
