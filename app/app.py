@@ -89,19 +89,29 @@ LOG_DIR = "/tmp/rclone_jobs"
 # Crea directory log se non esiste (compatibile Python 3.6)
 try:
     os.makedirs(LOG_DIR, exist_ok=True)
-except Exception:
-    # Python 3.6 compatibility - exist_ok non sempre disponibile
+except Exception as e:
     if not os.path.exists(LOG_DIR):
-        os.makedirs(LOG_DIR)
+        try:
+            os.makedirs(LOG_DIR)
+        except Exception as dir_exc:
+            print(f"❌ Errore creazione directory log {LOG_DIR}: {dir_exc}")
+            logging.error(f"Errore creazione directory log {LOG_DIR}: {dir_exc}")
 
-# Configurazione logging per l'applicazione Flask
+# ========================== LOGGING FLASK
+log_handlers = [logging.StreamHandler()]
+try:
+    file_log_path = '/var/log/s3cputo/flask_app.log'
+    os.makedirs(os.path.dirname(file_log_path), exist_ok=True)
+    fh = logging.FileHandler(file_log_path, mode='a')
+    log_handlers.append(fh)
+except Exception as log_file_exc:
+    print(f"❌ File log Flask non utilizzabile: {log_file_exc}")
+    logging.error(f"File log Flask non utilizzabile: {log_file_exc}")
+
 logging.basicConfig(
-    level=logging.DEBUG,  # Cambiato a DEBUG per maggiori dettagli durante il testing
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),  # Console output
-        logging.FileHandler('/var/log/s3cputo/flask_app.log', mode='a')  # File output per debug
-    ]
+    handlers=log_handlers
 )
 
 # =============================================================================
@@ -230,11 +240,15 @@ def run_rclone(cmd, env):
     # Genera ID univoco per il job
     job_id = uuid.uuid4().hex
     log_file = os.path.join(LOG_DIR, "job_{}.log".format(job_id))
+    process_error = None
 
-    # Scrive l'inizio del job nel log con comando eseguito
-    with open(log_file, "a") as f:
-        f.write("[JOB {}] START: {}\n".format(job_id, ' '.join(cmd)))
-        f.flush()
+    try:
+        # Scrive l'inizio del job nel log con comando eseguito
+        with open(log_file, "a") as f:
+            f.write("[JOB {}] START: {}\n".format(job_id, ' '.join(cmd)))
+            f.flush()
+    except Exception as log_exc:
+        print(f"❌ Errore scrittura file log: {log_exc}")
 
     def run_process_in_background():
         """Funzione per eseguire rclone in background"""
@@ -270,13 +284,18 @@ def run_rclone(cmd, env):
             with open(log_file, "a") as f:
                 f.write("[JOB {}] ERROR: {}\n".format(job_id, str(e)))
                 f.flush()
-
     # Avvia thread in background
     thread = threading.Thread(target=run_process_in_background, daemon=True)
     thread.start()
+    time.sleep(0.5)
+    # Ritorna immediatamente job_idi, log_file e error
+    if process_error:
+       return job_id, log_file, process_error
 
     # Ritorna immediatamente job_id e log_file
+    #return job_id, log_file, None
     return job_id, log_file
+
 
 # =============================================================================
 # ROUTES FLASK - API ENDPOINTS
