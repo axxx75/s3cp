@@ -34,54 +34,42 @@ from app.config import get_provider_flags, GLOBAL_FLAGS, RCLONE_CONF, Config
 
 app = Flask(__name__)
 
-# Middleware per forzare HTTPS in produzione
-@app.before_request
-def force_https():
-    """Forza HTTPS in produzione se configurato"""
-    # Compatibilità con sistemi senza configurazioni SSL
-    if hasattr(Config, 'FORCE_HTTPS'):
-        try:
-            force_https_enabled = getattr(Config(), 'FORCE_HTTPS', False)
-            if force_https_enabled:
-                if not request.is_secure and not request.headers.get('X-Forwarded-Proto') == 'https':
-                    # Redirect a HTTPS solo se non siamo in sviluppo locale
-                    if not (request.host.startswith('localhost') or request.host.startswith('127.0.0.1')):
-                        return redirect(request.url.replace('http://', 'https://'), code=301)
-        except AttributeError:
-            # Ignora silenziosamente se la configurazione non esiste
-            pass
+# =============================================================================
+# SICUREZZA: Flask-Talisman per HTTPS e Header di Sicurezza
+# =============================================================================
+# Utilizziamo Flask-Talisman per:
+# - Forzare HTTPS (redirect automatico)
+# - Abilitare HSTS
+# - Impostare header di sicurezza (CSP, X-Frame-Options, ecc.)
+# - Semplificare la gestione della sicurezza rispetto a middleware manuali
 
-# Security headers per HTTPS
-@app.after_request
-def set_security_headers(response):
-    """Aggiunge header di sicurezza per HTTPS"""
-    config = Config()
+try:
+    from flask_talisman import Talisman
 
-    # Compatibilità con sistemi senza configurazioni SSL
-    ssl_enabled = getattr(config, 'SSL_ENABLED', False)
-    force_https = getattr(config, 'FORCE_HTTPS', False)
+    # Content Security Policy di default restrittiva, ma compatibile con la webapp
+    csp = {
+        'default-src': "'self'",
+        'script-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'"],
+        'img-src': ["'self'", "data:"],
+        'connect-src': "'self'",
+    }
 
-    if ssl_enabled or force_https:
-        # HSTS - Forza HTTPS per future richieste
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-
-        # Content Security Policy - Previene mixed content
-        response.headers['Content-Security-Policy'] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline'; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data:; "
-            "connect-src 'self'; "
-            "upgrade-insecure-requests"
-        )
-
-        # Altri header di sicurezza
-        response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['X-Frame-Options'] = 'DENY'
-        response.headers['X-XSS-Protection'] = '1; mode=block'
-        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-
-    return response
+    talisman = Talisman(
+        app,
+        content_security_policy=csp,
+        force_https=True,
+        strict_transport_security=True,
+        strict_transport_security_max_age=31536000,
+        strict_transport_security_include_subdomains=True,
+        strict_transport_security_preload=True,
+        frame_options="DENY",
+        referrer_policy="strict-origin-when-cross-origin",
+        session_cookie_secure=True,
+        session_cookie_http_only=True,
+    )
+except ImportError:
+    print("⚠️  flask_talisman non installato: HTTPS e header sicurezza non applicati. Installa con 'pip install flask-talisman' per produzione.")
 
 # Directory per i log dei job di sincronizzazione
 LOG_DIR = "/tmp/rclone_jobs"
@@ -115,7 +103,7 @@ logging.basicConfig(
 )
 
 # =============================================================================
-# FUNZIONI UTILITY PER RCLONE (compatibili Python 3.6)
+# FUNZIONI UTILITY PER RCLONE
 # =============================================================================
 
 def get_remotes():
@@ -133,7 +121,6 @@ def get_remotes():
     if os.path.exists(RCLONE_CONF):
         cfg.read(RCLONE_CONF)
     return list(cfg.sections())
-
 
 def safe_env(creds):
     """
@@ -174,7 +161,6 @@ def safe_env(creds):
 
     return env
 
-
 def build_remote(provider, bucket, path=''):
     """
     Costruisce la stringa remote per rclone nel formato provider:bucket/path.
@@ -194,28 +180,15 @@ def build_remote(provider, bucket, path=''):
         build_remote("gcs", "backup-bucket")
         # Returns: "gcs:backup-bucket"
     """
-    # Formato base: provider:bucket
     remote = "{}:{}".format(provider, bucket)
-
-    # Aggiungi path se specificato, con validazione e pulizia
     if path and path.strip():
-        # Pulisce il path: rimuove solo slash iniziali/finali e normalizza
-        clean_path = path.strip().strip('/')
-
-        # Normalizza separatori multipli
         import re
+        clean_path = path.strip().strip('/')
         clean_path = re.sub(r'/+', '/', clean_path)
-
-        # Rimuove solo caratteri veramente problematici per rclone
-        # Mantiene: lettere, numeri, spazi, trattini, underscore, punti e slash
-        # Rimuove solo: @#$%^&*(){}[]|\"'<>?`~+=
         clean_path = re.sub(r'[@#$%^&*(){}[\]|"\'<>?`~+=]', '', clean_path)
-
         if clean_path:
             remote += '/' + clean_path
-
     return remote
-
 
 def run_rclone(cmd, env):
     """
@@ -237,13 +210,11 @@ def run_rclone(cmd, env):
     """
     import threading
 
-    # Genera ID univoco per il job
     job_id = uuid.uuid4().hex
     log_file = os.path.join(LOG_DIR, "job_{}.log".format(job_id))
     process_error = None
 
     try:
-        # Scrive l'inizio del job nel log con comando eseguito
         with open(log_file, "a") as f:
             f.write("[JOB {}] START: {}\n".format(job_id, ' '.join(cmd)))
             f.flush()
@@ -251,51 +222,34 @@ def run_rclone(cmd, env):
         print(f"❌ Errore scrittura file log: {log_exc}")
 
     def run_process_in_background():
-        """Funzione per eseguire rclone in background"""
         try:
-            # Avvia processo rclone
             proc = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 universal_newlines=True,
                 env=env,
-                bufsize=1  # Line buffering per output real-time
+                bufsize=1
             )
-
-            # Scrive output in tempo reale nel file di log
             with open(log_file, "a") as f:
                 f.write("[JOB {}] PROCESS STARTED (PID: {})\n".format(job_id, proc.pid))
                 f.flush()
-
                 for line in proc.stdout:
                     f.write(line)
-                    f.flush()  # Forza scrittura immediata per streaming
-
-                # Aspetta completamento processo
+                    f.flush()
                 proc.wait()
-
-                # Scrive risultato finale
                 f.write("[JOB {}] PROCESS COMPLETED (Exit Code: {})\n".format(job_id, proc.returncode))
                 f.flush()
-
         except Exception as e:
-            # Gestisce errori durante l'esecuzione
             with open(log_file, "a") as f:
                 f.write("[JOB {}] ERROR: {}\n".format(job_id, str(e)))
                 f.flush()
-    # Avvia thread in background
     thread = threading.Thread(target=run_process_in_background, daemon=True)
     thread.start()
     time.sleep(0.5)
-    # Ritorna immediatamente job_idi, log_file e error
     if process_error:
        return job_id, log_file, process_error
-
-    # Ritorna immediatamente job_id e log_file
-    #return job_id, log_file, None
     return job_id, log_file
-
 
 # =============================================================================
 # ROUTES FLASK - API ENDPOINTS
@@ -314,16 +268,13 @@ def index():
         I provider vengono passati al template Jinja2 per popolare le select.
     """
     try:
-        # Carica lista provider da configurazione rclone
         providers = get_remotes()
     except Exception as e:
         app.logger.error("Errore lettura remotes: {}".format(str(e)))
         providers = []
 
-    # Crea nomi display user-friendly per i provider
     provider_names = {}
     for provider in providers:
-        # Riconosce alcuni provider comuni e assegna nomi descrittivi
         if 'ecs' in provider.lower():
             provider_names[provider] = "ECS ({})".format(provider)
         elif 'gcs' in provider.lower():
@@ -331,14 +282,11 @@ def index():
         elif 'aws' in provider.lower():
             provider_names[provider] = "AWS S3 ({})".format(provider)
         else:
-            # Per provider non riconosciuti, usa il nome originale
             provider_names[provider] = provider
 
-    # Renderizza template con dati provider
     return render_template('index.html',
                          providers=providers,
                          provider_names=provider_names)
-
 
 @app.route('/api/list_buckets', methods=['POST'])
 def list_buckets():
@@ -366,7 +314,6 @@ def list_buckets():
         variabili d'ambiente specifiche per il tipo di autenticazione.
     """
     try:
-        # Parsing e validazione payload JSON
         data = request.get_json()
         if not data:
             return jsonify({"error": "Dati JSON mancanti"}), 400
@@ -374,13 +321,11 @@ def list_buckets():
         provider = data.get("provider")
         creds = data.get("creds", {})
 
-        # Validazione parametri obbligatori
         if not provider:
             return jsonify({"error": "Provider mancante"}), 400
 
         app.logger.info("Lista bucket per provider: {}".format(provider))
 
-        # Validazione credenziali - deve avere almeno un tipo
         has_hmac = creds.get('access_key') and creds.get('secret_key')
         has_sa_creds = creds.get('sa_credentials')
         has_sa_file = creds.get('sa_file')
@@ -390,29 +335,22 @@ def list_buckets():
             app.logger.error("Nessuna credenziale valida fornita")
             return jsonify({"error": "Credenziali mancanti: inserisci Access/Secret Key o Service Account JSON"}), 400
 
-        # Validazione specifica per GCS Service Account
         is_gcs = provider and provider.lower().find('gcs') != -1
         if is_gcs and (has_sa_creds or has_sa_file) and not has_project_number:
             app.logger.error("Project Number mancante per GCS Service Account")
             return jsonify({"error": "Project Number GCS obbligatorio (12 cifre) per Service Account"}), 400
 
-        # Prepara environment con credenziali
         env = safe_env(creds)
-
-        # Costruisce comando rclone per listare bucket
-        # lsd = list directories, -vv = very verbose per debug
         cmd = ["rclone", "lsd", "{}:".format(provider), "-vv"] + get_provider_flags(provider)
 
         app.logger.info("Comando: {}".format(' '.join(cmd)))
 
-        # Log dettagliato credenziali per debug (senza esporre valori sensibili)
         if has_hmac:
             app.logger.info("Modalità autenticazione: HMAC (Access/Secret Key)")
             app.logger.info("Access Key length: {}".format(len(creds.get('access_key', ''))))
         elif has_sa_creds:
             app.logger.info("Modalità autenticazione: Service Account JSON (inline)")
             app.logger.info("SA JSON length: {}".format(len(creds.get('sa_credentials', ''))))
-            # Verifica che sia JSON valido
             try:
                 import json
                 parsed_sa = json.loads(creds.get('sa_credentials'))
@@ -425,7 +363,6 @@ def list_buckets():
             app.logger.info("Modalità autenticazione: Service Account File")
             app.logger.info("SA File path: {}".format(creds.get('sa_file')))
 
-        # Log variabili d'ambiente impostate (senza valori sensibili)
         env_vars = []
         if 'RCLONE_S3_ACCESS_KEY_ID' in env:
             env_vars.append('RCLONE_S3_ACCESS_KEY_ID')
@@ -440,50 +377,36 @@ def list_buckets():
             app.logger.info("GCS Project Number: {}".format(env.get('RCLONE_GCS_PROJECT_NUMBER')))
         app.logger.info("Environment variables set: {}".format(', '.join(env_vars)))
 
-        # Esegue comando con timeout per evitare hang
         app.logger.info("Esecuzione comando rclone...")
         output = subprocess.check_output(
             cmd,
             env=env,
             universal_newlines=True,
             timeout=60,
-            stderr=subprocess.STDOUT  # Cattura anche stderr per debug
+            stderr=subprocess.STDOUT
         )
 
         app.logger.info("Output rclone ricevuto ({} caratteri)".format(len(output)))
 
-        # Log output completo per debug (limitato a 1000 caratteri)
         output_preview = output[:1000] + "..." if len(output) > 1000 else output
         app.logger.debug("Output rclone: {}".format(output_preview))
 
-        # Parsing output per estrarre nomi bucket
         buckets = []
         for line_num, line in enumerate(output.splitlines()):
             line = line.strip()
             if line:
                 app.logger.debug("Parsing line {}: {}".format(line_num, line))
-
-                # Salta righe di debug di rclone (iniziano con timestamp o contengono "DEBUG :")
                 if line.startswith("20") and ("DEBUG :" in line or "INFO :" in line or "ERROR :" in line):
                     app.logger.debug("Riga di debug ignorata")
                     continue
-
-                # L'output di rclone lsd ha formato:
-                # "          -1 2023-01-01 00:00:00        -1 bucket-name"
-                # oppure per alcuni provider:
-                # "drwxrwxrwx   1 user group        0 2023-01-01 00:00:00 bucket-name"
                 parts = line.split()
-
-                # Per GCS e provider simili: cerca righe che iniziano con "-1" e hanno formato data
                 if len(parts) >= 5 and parts[0] == "-1" and len(parts[1]) == 10 and ":" in parts[2]:
                     bucket_name = parts[-1]
-                    # Filtra bucket con nomi non validi (evita "*", "active", etc.)
                     if bucket_name and bucket_name not in ["*", "active", "routines"] and not bucket_name.startswith('"'):
                         buckets.append(bucket_name)
                         app.logger.debug("Bucket GCS trovato: {}".format(bucket_name))
                     else:
                         app.logger.debug("Nome bucket non valido ignorato: {}".format(bucket_name))
-                # Per provider standard S3: cerca righe con formato directory standard
                 elif len(parts) >= 5 and not parts[0].startswith("20") and not line.startswith("-1"):
                     bucket_name = parts[-1]
                     if bucket_name and not bucket_name.startswith('"') and not bucket_name.endswith('"'):
@@ -496,11 +419,9 @@ def list_buckets():
         return jsonify({"buckets": buckets})
 
     except subprocess.CalledProcessError as e:
-        # Errore nell'esecuzione comando rclone
         error_output = getattr(e, 'output', 'Nessun output disponibile')
         app.logger.error("Errore comando rclone (exit code {}): {}".format(e.returncode, error_output))
 
-        # Estrai messaggio errore più user-friendly
         if "NoCredentialsError" in error_output:
             error_msg = "Credenziali non valide o mancanti per il provider"
         elif "AccessDenied" in error_output:
@@ -517,16 +438,13 @@ def list_buckets():
         return jsonify({"error": error_msg}), 400
 
     except subprocess.TimeoutExpired as e:
-        # Timeout comando
         app.logger.error("Timeout comando rclone dopo 60 secondi")
         return jsonify({"error": "Timeout: operazione troppo lenta. Verifica la connessione e le credenziali"}), 504
 
     except Exception as e:
-        # Altri errori generici
         app.logger.error("Errore generico in list_buckets: {}".format(str(e)))
-        app.logger.exception("Stack trace completo:")  # Log stack trace completo
+        app.logger.exception("Stack trace completo:")
         return jsonify({"error": "Errore interno: {}".format(str(e))}), 500
-
 
 @app.route('/api/copy', methods=['POST'])
 def copy():
@@ -564,12 +482,10 @@ def copy():
         - Service Account: sa_credentials (JSON compatto per GCS)
     """
     try:
-        # Parsing e validazione payload JSON
         data = request.get_json()
         if not data:
             return jsonify({"error": "Dati JSON mancanti"}), 400
 
-        # Estrazione parametri dal payload
         src_provider = data.get('src_provider')
         dst_provider = data.get('dst_provider')
         src_bucket = data.get('src_bucket')
@@ -580,11 +496,9 @@ def copy():
         dst_creds = data.get('dst_creds', {})
         additional_flags = data.get('additional_flags', [])
 
-        # Validazione parametri obbligatori
         if not all([src_provider, dst_provider, src_bucket, dst_bucket]):
             return jsonify({"error": "Parametri mancanti"}), 400
 
-        # Validazione credenziali GCS per sorgente
         is_src_gcs = src_provider and src_provider.lower().find('gcs') != -1
         if is_src_gcs:
             has_src_hmac = src_creds.get('access_key') and src_creds.get('secret_key')
@@ -597,7 +511,6 @@ def copy():
 
             app.logger.info("GCS sorgente - Project Number: {}".format(has_src_project_number))
 
-        # Validazione credenziali GCS per destinazione
         is_dst_gcs = dst_provider and dst_provider.lower().find('gcs') != -1
         if is_dst_gcs:
             has_dst_hmac = dst_creds.get('access_key') and dst_creds.get('secret_key')
@@ -610,33 +523,26 @@ def copy():
 
             app.logger.info("GCS destinazione - Project Number: {}".format(has_dst_project_number))
 
-        # Costruzione stringhe remote per sorgente e destinazione
         src = build_remote(src_provider, src_bucket, src_path)
         dst = build_remote(dst_provider, dst_bucket, dst_path)
 
         app.logger.info("Remote costruiti - SRC: '{}', DST: '{}'".format(src, dst))
 
-        # Preparazione environment con credenziali combinate
         env = os.environ.copy()
-        env.update(safe_env(src_creds))   # Credenziali sorgente
-        env.update(safe_env(dst_creds))   # Credenziali destinazione
+        env.update(safe_env(src_creds))
+        env.update(safe_env(dst_creds))
 
-        # Combinazione flag provider-specifici e globali
-        src_flags = get_provider_flags(src_provider)      # Flag specifici provider sorgente
-        dst_flags = get_provider_flags(dst_provider)      # Flag specifici provider destinazione
+        src_flags = get_provider_flags(src_provider)
+        dst_flags = get_provider_flags(dst_provider)
 
-        # Rimozione duplicati utilizzando set() e conversione a lista
         all_flags = src_flags + dst_flags + GLOBAL_FLAGS + additional_flags
         flags = list(set(all_flags))
 
-        # Costruzione comando rclone sync finale
         cmd = ["rclone", "sync", src, dst] + flags
 
         app.logger.info("Avvio sincronizzazione: {} -> {}".format(src, dst))
         app.logger.info("Comando completo: {}".format(' '.join(cmd)))
-        # app.logger.info("Flag utilizzati: {}".format(flags))  # Commentato per sicurezza
 
-        # Avvio job asincrono
         app.logger.info("Avvio processo rclone in background...")
         job_id, log_file = run_rclone(cmd, env)
         app.logger.info("Job creato con ID: {} - Log: {}".format(job_id, log_file))
@@ -646,7 +552,6 @@ def copy():
     except Exception as e:
         app.logger.error("Errore copy: {}".format(str(e)))
         return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/log/<job_id>')
 def stream_log(job_id):
@@ -669,65 +574,47 @@ def stream_log(job_id):
         - "data: [STREAM_END]\n\n" quando il job è completato
     """
     def generate():
-        """
-        Generatore per Server-Sent Events stream.
-
-        Yields:
-            str: Messaggi nel formato SSE "data: messaggio\n\n"
-        """
-        # Path del file di log per questo job
         log_file = os.path.join(LOG_DIR, "job_{}.log".format(job_id))
-        last_size = 0  # Posizione ultima lettura nel file
+        last_size = 0
 
-        # Attesa creazione file di log (con timeout)
         timeout = 30
         start_time = time.time()
 
         while not os.path.exists(log_file) and (time.time() - start_time) < timeout:
             time.sleep(0.5)
 
-        # Se file non esiste dopo timeout, invia errore
         if not os.path.exists(log_file):
             yield "data: Errore: File di log non trovato\n\n"
             return
 
-        # Messaggio di connessione stabilita
         yield "data: Connesso al log del job {}\n\n".format(job_id)
 
-        # Loop principale per streaming contenuto
         job_completed = False
         while not job_completed:
             try:
                 if os.path.exists(log_file):
                     with open(log_file, 'r') as f:
-                        # Legge solo nuovo contenuto dal file
                         f.seek(last_size)
                         new_content = f.read()
 
                         if new_content:
-                            # Invia ogni riga come evento SSE separato
                             for line in new_content.splitlines():
                                 if line.strip():
                                     yield "data: {}\n\n".format(line)
 
-                            # Aggiorna posizione lettura
                             last_size = f.tell()
 
-                            # Controllo completamento job basato su output rclone
-                            # Rclone stampa statistiche finali con queste parole chiave
                             completion_indicators = [
                                 'transferred:', 'errors:', 'checks:', 'elapsed time:'
                             ]
                             if any(indicator in new_content.lower() for indicator in completion_indicators):
-                                time.sleep(2)  # Aspetta eventuali log finali
+                                time.sleep(2)
                                 job_completed = True
 
-                # Pausa tra letture se job non completato
                 if not job_completed:
                     time.sleep(1)
 
-                # Safety timeout per evitare stream infiniti
-                if time.time() - start_time > 3600:  # 1 ora
+                if time.time() - start_time > 3600:
                     yield "data: Timeout raggiunto\n\n"
                     break
 
@@ -735,12 +622,9 @@ def stream_log(job_id):
                 yield "data: Errore: {}\n\n".format(str(e))
                 break
 
-        # Segnale di fine stream per il client
         yield "data: [STREAM_END]\n\n"
 
-    # Ritorna Response con MIME type per Server-Sent Events
     return Response(generate(), mimetype="text/event-stream")
-
 
 @app.route('/api/jobs')
 def jobs():
@@ -760,12 +644,9 @@ def jobs():
     try:
         log_files = []
 
-        # Scansiona directory log per trovare file job
         if os.path.exists(LOG_DIR):
             for filename in os.listdir(LOG_DIR):
-                # Filtra solo file di log job nel formato corretto
                 if filename.startswith("job_") and filename.endswith(".log"):
-                    # Estrae job_id dal nome file (rimuove "job_" e ".log")
                     job_id = filename[4:-4]
                     log_files.append(job_id)
 
@@ -777,11 +658,10 @@ def jobs():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route("/md/<path:filename>")
 def show_markdown(filename):
     import markdown, os
-    base_dir = app.root_path  # o un'altra cartella
+    base_dir = app.root_path
     file_path = os.path.join(base_dir, filename)
 
     if not os.path.isfile(file_path):
@@ -799,7 +679,6 @@ def show_markdown(filename):
     </html>
     """
 
-
 # =============================================================================
 # AVVIO APPLICAZIONE
 # =============================================================================
@@ -810,50 +689,44 @@ if __name__ == "__main__":
 
     Esegue test di sistema e avvia il server Flask in modalità debug.
     """
-    print("🚀 Avvio Rclone S3 Sync WebApp (Python 3.6 compatible)")
+    print("🚀 Avvio Rclone S3 Sync WebApp")
     print("📂 Log directory: {}".format(LOG_DIR))
     print("⚙️  Rclone config: {}".format(RCLONE_CONF))
 
-    # Test disponibilità rclone
     try:
         subprocess.run(["rclone", "version"], capture_output=True, check=True)
         print("✅ rclone trovato e funzionante")
     except Exception:
         print("❌ rclone non trovato o non funzionante")
 
-    # Test configurazione rclone
     if os.path.exists(RCLONE_CONF):
         try:
             remotes = get_remotes()
             print("✅ Config trovata con {} remotes: {}".format(
-                len(remotes), ', '.join(remotes[:5])  # Mostra max 5 remotes
+                len(remotes), ', '.join(remotes[:5])
             ))
         except Exception as e:
             print("⚠️  Errore lettura config: {}".format(str(e)))
     else:
         print("⚠️  Config non trovata: {}".format(RCLONE_CONF))
 
-    # Configurazione del server
     config = Config()
 
-    # Compatibilità con sistemi senza configurazioni SSL
     ssl_enabled = getattr(config, 'SSL_ENABLED', False)
     ssl_cert_path = getattr(config, 'SSL_CERT_PATH', '')
     ssl_key_path = getattr(config, 'SSL_KEY_PATH', '')
 
-    # Determina protocollo e SSL context
     protocol = "https" if ssl_enabled else "http"
     ssl_context = None
 
     if ssl_enabled:
         try:
-            # Verifica esistenza certificati SSL
             if ssl_cert_path and ssl_key_path and os.path.exists(ssl_cert_path) and os.path.exists(ssl_key_path):
                 ssl_context = (ssl_cert_path, ssl_key_path)
                 print("✅ Certificati SSL trovati")
             else:
                 print("⚠️  Certificati SSL non trovati, generazione certificato auto-firmato...")
-                ssl_context = 'adhoc'  # Flask genererà certificato auto-firmato
+                ssl_context = 'adhoc'
                 print("📝 ATTENZIONE: Usato certificato auto-firmato (solo per sviluppo)")
         except Exception as e:
             print("❌ Errore configurazione SSL: {}".format(str(e)))
@@ -869,7 +742,6 @@ if __name__ == "__main__":
         if ssl_context == 'adhoc':
             print("⚠️  Certificato auto-firmato (accetta l'avviso nel browser)")
 
-    # Avvio server Flask con supporto SSL opzionale
     app.run(
         host=config.HOST,
         port=config.PORT,

@@ -32,7 +32,7 @@ def get_provider_flags(provider):
     """Restituisce i flag specifici del provider"""
     return PROVIDER_FLAGS.get(provider.upper(), [])
 
-# Configurazione Flask (Python 3.6 compatible)
+# Configurazione Flask
 class Config(object):
     """Configurazione base Flask"""
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
@@ -40,27 +40,6 @@ class Config(object):
     HOST = os.environ.get('FLASK_HOST', '0.0.0.0')
     PORT = int(os.environ.get('FLASK_PORT', 8080))
 
-class DevelopmentConfig(Config):
-    """Configurazione per ambiente di sviluppo"""
-    DEBUG = True
-    TESTING = False
-
-class ProductionConfig(Config):
-    """Configurazione per ambiente di produzione"""
-    DEBUG = False
-    TESTING = False
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'production-secret-key'
-
-class TestingConfig(Config):
-    """Configurazione per test"""
-    DEBUG = True
-    TESTING = True
-    WTF_CSRF_ENABLED = False
-
-# Mapping delle configurazioni
-config = {
-    'development': DevelopmentConfig,
-    'production': ProductionConfig,
-    'testing': TestingConfig,
-    'default': DevelopmentConfig
-}
+    SSL_ENABLED = os.environ.get('SSL_ENABLED', 'False').lower() == 'true'
+    SSL_CERT_PATH = os.environ.get('SSL_CERT_PATH', '')
+    SSL_KEY_PATH = os.environ.get('SSL_KEY_PATH', '')
