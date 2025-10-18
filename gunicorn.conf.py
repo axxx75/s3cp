@@ -1,20 +1,24 @@
 import multiprocessing
 import os
 
+# === 🔐 CONFIGURAZIONE SSL ===
+# Percorsi certificati SSL (usati da Gunicorn *e* esportati per Flask)
+SSL_CERT_PATH = "/opt/s3cputo/app/server.crt"
+SSL_KEY_PATH = "/opt/s3cputo/app/server.key"
+
+# Esporta le variabili d'ambiente così Flask le vede nel config.py
+os.environ["SSL_CERT_PATH"] = SSL_CERT_PATH
+os.environ["SSL_KEY_PATH"] = SSL_KEY_PATH
+
+# Gunicorn userà direttamente questi file per HTTPS
+certfile = SSL_CERT_PATH
+keyfile = SSL_KEY_PATH
+
 # Numero di worker (uno per core)
 workers = multiprocessing.cpu_count()
 
 # Host e porta
 bind = "0.0.0.0:8080"
-
-# Conf per Flask
-os.environ["SSL_CERT_PATH"] = "/opt/s3cputo/app/server.crt"
-os.environ["SSL_KEY_PATH"] = "/opt/s3cputo/app/server.key"
-
-# Conf per Gunicorn
-certfile = os.environ["SSL_CERT_PATH"]
-keyfile = os.environ["SSL_KEY_PATH"]
-
 
 # Log file persistenti
 errorlog = "/var/log/s3cputo/error.log"
