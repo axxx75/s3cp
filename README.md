@@ -71,6 +71,7 @@ Applicazione web professionale per la sincronizzazione multi-cloud di storage ut
 ```bash
 flask>=2.0.0
 python-dotenv>=0.19.0
+flask-talisman
 ```
 
 ---
@@ -84,7 +85,7 @@ cd s3cp
 pip install -U pip
 python3 -m venv venv
 source venv/bin/activate
-pip install flask python-dotenv gunicorn
+pip install flask python-dotenv gunicorn flask-talisman
 ```
 
 ### **2️⃣ Configura rclone**
