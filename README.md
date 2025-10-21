@@ -80,9 +80,9 @@ flask-talisman
 
 ### **1️⃣ Clona e Installa**
 ```bash
+cd /opt
 git clone https://github.com/axxx75/s3cp.git
 cd s3cp
-pip install -U pip
 python3 -m venv venv
 source venv/bin/activate
 pip install flask python-dotenv gunicorn flask-talisman
@@ -99,17 +99,17 @@ rclone version
 
 ### **3️⃣ Avvia l'applicazione (installazione come service)**
 ```bash
-cp s3cputo-webapp.service /etc/systemd/system/
+cp s3cp-webapp.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable s3cputo-webapp
-systemctl start s3cputo-webapp
+systemctl enable s3cp-webapp
+systemctl start s3cp-webapp
 
 # Se vuoi il server in HTTPS scommenta le 2 righe nel file gunicorn.conf.py
 Documentati bene su come farlo seriamente, eventualmente con una CA. Al volo puoi fare come segue, crea i file server.crt e server.key nella dir dell'app
- openssl req -x509 -newkey rsa:4096 -nodes -keyout server.key -out server.crt -days 365 -subj "/CN=localhost"
+ openssl req -x509 -newkey rsa:4096 -nodes -keyout app/server.key -out app/server.crt -days 365 -subj "/CN=localhost"
 
 # Verifica start
-journalctl -u s3cputo-webapp.service -f
+journalctl -u s3cp-webapp.service -f
 ```
 
 ### **4️⃣ Accedi all'interfaccia**
@@ -125,7 +125,7 @@ journalctl -u s3cputo-webapp.service -f
 s3cputo/
 ├── 📄 start.sh                  # 🔧 Script per start application
 ├── 📄 gunicorn.conf.py          # 🔧 File conf server gunicorn
-├── 📄 s3cputo-webapp.service    # 🔧 Script for service configuration
+├── 📄 s3cp-webapp.service    # 🔧 Script for service configuration
 ├── 📄 README.md                 # 📖 Questo file
 ├── 📁 app/                      # 📁 Folder Application
 │   └── 📁 static/               # 📁 Folder static content

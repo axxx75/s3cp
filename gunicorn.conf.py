@@ -3,8 +3,8 @@ import os
 
 # === 🔐 CONFIGURAZIONE SSL ===
 # Percorsi certificati SSL (usati da Gunicorn *e* esportati per Flask)
-SSL_CERT_PATH = "/opt/s3cputo/app/server.crt"
-SSL_KEY_PATH = "/opt/s3cputo/app/server.key"
+SSL_CERT_PATH = "/opt/s3cp/app/server.crt"
+SSL_KEY_PATH = "/opt/s3cp/app/server.key"
 
 # Esporta le variabili d'ambiente così Flask le vede nel config.py
 os.environ["SSL_CERT_PATH"] = SSL_CERT_PATH
@@ -21,8 +21,8 @@ workers = multiprocessing.cpu_count()
 bind = [ "0.0.0.0:8080" ]
 
 # Log file persistenti
-errorlog = "/var/log/s3cputo/error.log"
-accesslog = "/var/log/s3cputo/access.log"
+errorlog = "/var/log/s3cp/error.log"
+accesslog = "/var/log/s3cp/access.log"
 
 # Livello di log
 loglevel = "debug"

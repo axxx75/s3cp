@@ -5,10 +5,10 @@ After=network.target
 [Service]
 User=root
 Group=root
-WorkingDirectory=/opt/s3cputo
-Environment="PATH=/usr/local/bin:/usr/bin:/bin:/opt/s3cputo/venv/bin"
+WorkingDirectory=/opt/s3cp
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:/opt/s3cp/venv/bin"
 
-ExecStart=/opt/s3cputo/start.sh
+ExecStart=/opt/s3cp/start.sh
 Restart=always
 RestartSec=10
 

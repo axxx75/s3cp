@@ -88,7 +88,7 @@ except Exception as e:
 # ========================== LOGGING FLASK
 log_handlers = [logging.StreamHandler()]
 try:
-    file_log_path = '/var/log/s3cputo/flask_app.log'
+    file_log_path = '/var/log/s3cp/flask_app.log'
     os.makedirs(os.path.dirname(file_log_path), exist_ok=True)
     fh = logging.FileHandler(file_log_path, mode='a')
     log_handlers.append(fh)
